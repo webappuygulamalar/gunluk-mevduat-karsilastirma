@@ -1,0 +1,618 @@
+[
+  {
+    "banka": "TOM Bank",
+    "altLimit": 0,
+    "ustLimit": 49999.99,
+    "vadesizdeKalacak": 7500,
+    "yillikBrutOran": 0.44,
+    "not": ""
+  },
+  {
+    "banka": "TOM Bank",
+    "altLimit": 50000,
+    "ustLimit": 249999.99,
+    "vadesizdeKalacak": 35000,
+    "yillikBrutOran": 0.44,
+    "not": ""
+  },
+  {
+    "banka": "TOM Bank",
+    "altLimit": 250000,
+    "ustLimit": 499999.99,
+    "vadesizdeKalacak": 50000,
+    "yillikBrutOran": 0.44,
+    "not": ""
+  },
+  {
+    "banka": "TOM Bank",
+    "altLimit": 500000,
+    "ustLimit": 1249999.99,
+    "vadesizdeKalacak": 200000,
+    "yillikBrutOran": 0.48,
+    "not": ""
+  },
+  {
+    "banka": "TOM Bank",
+    "altLimit": 1250000,
+    "ustLimit": 2499999.99,
+    "vadesizdeKalacak": 425000,
+    "yillikBrutOran": 0.49,
+    "not": ""
+  },
+  {
+    "banka": "TOM Bank",
+    "altLimit": 2500000,
+    "ustLimit": 7499999.99,
+    "vadesizdeKalacak": 750000,
+    "yillikBrutOran": 0.465,
+    "not": ""
+  },
+  {
+    "banka": "TOM Bank",
+    "altLimit": 7500000,
+    "ustLimit": 17499999.99,
+    "vadesizdeKalacak": 1500000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "TOM Bank",
+    "altLimit": 17500000,
+    "ustLimit": 34999999.99,
+    "vadesizdeKalacak": 2750000,
+    "yillikBrutOran": 0.445,
+    "not": ""
+  },
+  {
+    "banka": "TOM Bank",
+    "altLimit": 35000000,
+    "ustLimit": 75000000,
+    "vadesizdeKalacak": 5000000,
+    "yillikBrutOran": 0.44,
+    "not": ""
+  },
+  {
+    "banka": "QNB",
+    "altLimit": 7500,
+    "ustLimit": 49999,
+    "vadesizdeKalacak": 7500,
+    "yillikBrutOran": 0.435,
+    "not": ""
+  },
+  {
+    "banka": "QNB",
+    "altLimit": 50000,
+    "ustLimit": 99999,
+    "vadesizdeKalacak": 10000,
+    "yillikBrutOran": 0.435,
+    "not": ""
+  },
+  {
+    "banka": "QNB",
+    "altLimit": 100000,
+    "ustLimit": 249999,
+    "vadesizdeKalacak": 15000,
+    "yillikBrutOran": 0.435,
+    "not": ""
+  },
+  {
+    "banka": "QNB",
+    "altLimit": 250000,
+    "ustLimit": 499999,
+    "vadesizdeKalacak": 30000,
+    "yillikBrutOran": 0.435,
+    "not": ""
+  },
+  {
+    "banka": "QNB",
+    "altLimit": 500000,
+    "ustLimit": 999999,
+    "vadesizdeKalacak": 60000,
+    "yillikBrutOran": 0.435,
+    "not": ""
+  },
+  {
+    "banka": "QNB",
+    "altLimit": 1000000,
+    "ustLimit": 2499999,
+    "vadesizdeKalacak": 150000,
+    "yillikBrutOran": 0.435,
+    "not": ""
+  },
+  {
+    "banka": "QNB",
+    "altLimit": 2500000,
+    "ustLimit": 4999999,
+    "vadesizdeKalacak": 300000,
+    "yillikBrutOran": 0.435,
+    "not": ""
+  },
+  {
+    "banka": "QNB",
+    "altLimit": 5000000,
+    "ustLimit": 9999999,
+    "vadesizdeKalacak": 600000,
+    "yillikBrutOran": 0.435,
+    "not": ""
+  },
+  {
+    "banka": "QNB",
+    "altLimit": 10000000,
+    "ustLimit": 29999999,
+    "vadesizdeKalacak": 1000000,
+    "yillikBrutOran": 0.3025,
+    "not": ""
+  },
+  {
+    "banka": "QNB",
+    "altLimit": 30000000,
+    "ustLimit": 9999999999,
+    "vadesizdeKalacak": 1000000,
+    "yillikBrutOran": 0.28,
+    "not": ""
+  },
+  {
+    "banka": "Yapı Kredi",
+    "altLimit": 10000,
+    "ustLimit": 49999,
+    "vadesizdeKalacak": 5000,
+    "yillikBrutOran": 0.435,
+    "not": ""
+  },
+  {
+    "banka": "Yapı Kredi",
+    "altLimit": 50000,
+    "ustLimit": 99999,
+    "vadesizdeKalacak": 7500,
+    "yillikBrutOran": 0.435,
+    "not": ""
+  },
+  {
+    "banka": "Yapı Kredi",
+    "altLimit": 100000,
+    "ustLimit": 249999,
+    "vadesizdeKalacak": 15000,
+    "yillikBrutOran": 0.435,
+    "not": ""
+  },
+  {
+    "banka": "Yapı Kredi",
+    "altLimit": 250000,
+    "ustLimit": 499999,
+    "vadesizdeKalacak": 30000,
+    "yillikBrutOran": 0.435,
+    "not": ""
+  },
+  {
+    "banka": "Yapı Kredi",
+    "altLimit": 500000,
+    "ustLimit": 999999,
+    "vadesizdeKalacak": 60000,
+    "yillikBrutOran": 0.435,
+    "not": ""
+  },
+  {
+    "banka": "Yapı Kredi",
+    "altLimit": 1000000,
+    "ustLimit": 1999999,
+    "vadesizdeKalacak": 120000,
+    "yillikBrutOran": 0.435,
+    "not": ""
+  },
+  {
+    "banka": "Yapı Kredi",
+    "altLimit": 2000000,
+    "ustLimit": 2999999,
+    "vadesizdeKalacak": 200000,
+    "yillikBrutOran": 0.435,
+    "not": ""
+  },
+  {
+    "banka": "Yapı Kredi",
+    "altLimit": 3000000,
+    "ustLimit": 5000000,
+    "vadesizdeKalacak": 300000,
+    "yillikBrutOran": 0.435,
+    "not": ""
+  },
+  {
+    "banka": "Yapı Kredi",
+    "altLimit": 5000000,
+    "ustLimit": 10000000,
+    "vadesizdeKalacak": 500000,
+    "yillikBrutOran": 0.435,
+    "not": ""
+  },
+  {
+    "banka": "Fibabanka",
+    "altLimit": 10000,
+    "ustLimit": 24999,
+    "vadesizdeKalacak": 5000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Fibabanka",
+    "altLimit": 25000,
+    "ustLimit": 49999,
+    "vadesizdeKalacak": 7500,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Fibabanka",
+    "altLimit": 50000,
+    "ustLimit": 99999,
+    "vadesizdeKalacak": 10000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Fibabanka",
+    "altLimit": 100000,
+    "ustLimit": 249999,
+    "vadesizdeKalacak": 20000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Fibabanka",
+    "altLimit": 250000,
+    "ustLimit": 499999,
+    "vadesizdeKalacak": 40000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Fibabanka",
+    "altLimit": 500000,
+    "ustLimit": 999999,
+    "vadesizdeKalacak": 65000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Fibabanka",
+    "altLimit": 1000000,
+    "ustLimit": 1999999,
+    "vadesizdeKalacak": 175000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Fibabanka",
+    "altLimit": 2000000,
+    "ustLimit": 2999999,
+    "vadesizdeKalacak": 300000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Fibabanka",
+    "altLimit": 3000000,
+    "ustLimit": 3999999,
+    "vadesizdeKalacak": 400000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Fibabanka",
+    "altLimit": 4000000,
+    "ustLimit": 4999999,
+    "vadesizdeKalacak": 500000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Fibabanka",
+    "altLimit": 5000000,
+    "ustLimit": 7500000,
+    "vadesizdeKalacak": 750000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Fibabanka",
+    "altLimit": 7500000,
+    "ustLimit": 10000000,
+    "vadesizdeKalacak": 1000000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Alternatifbank",
+    "altLimit": 20000,
+    "ustLimit": 250000,
+    "vadesizdeKalacak": 20000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Alternatifbank",
+    "altLimit": 250001,
+    "ustLimit": 500000,
+    "vadesizdeKalacak": 40000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Alternatifbank",
+    "altLimit": 500001,
+    "ustLimit": 1000000,
+    "vadesizdeKalacak": 75000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Alternatifbank",
+    "altLimit": 1000001,
+    "ustLimit": 1500000,
+    "vadesizdeKalacak": 150000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Alternatifbank",
+    "altLimit": 1500001,
+    "ustLimit": 2000000,
+    "vadesizdeKalacak": 175000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Alternatifbank",
+    "altLimit": 2000001,
+    "ustLimit": 3000000,
+    "vadesizdeKalacak": 250000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Alternatifbank",
+    "altLimit": 3000001,
+    "ustLimit": 4000000,
+    "vadesizdeKalacak": 350000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Alternatifbank",
+    "altLimit": 4000001,
+    "ustLimit": 5000000,
+    "vadesizdeKalacak": 450000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Alternatifbank",
+    "altLimit": 5000001,
+    "ustLimit": 7500000,
+    "vadesizdeKalacak": 600000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Alternatifbank",
+    "altLimit": 7500001,
+    "ustLimit": 10000000,
+    "vadesizdeKalacak": 900000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "Alternatifbank",
+    "altLimit": 10000001,
+    "ustLimit": 15000000,
+    "vadesizdeKalacak": 1500000,
+    "yillikBrutOran": 0.46,
+    "not": ""
+  },
+  {
+    "banka": "ING ilk defa müşteri kampanyası",
+    "altLimit": 10000,
+    "ustLimit": 49999,
+    "vadesizdeKalacak": 5000,
+    "yillikBrutOran": 0.45,
+    "not": ""
+  },
+  {
+    "banka": "ING ilk defa müşteri kampanyası",
+    "altLimit": 50000,
+    "ustLimit": 99999,
+    "vadesizdeKalacak": 7500,
+    "yillikBrutOran": 0.45,
+    "not": ""
+  },
+  {
+    "banka": "ING ilk defa müşteri kampanyası",
+    "altLimit": 100000,
+    "ustLimit": 249999,
+    "vadesizdeKalacak": 15000,
+    "yillikBrutOran": 0.45,
+    "not": ""
+  },
+  {
+    "banka": "ING ilk defa müşteri kampanyası",
+    "altLimit": 250000,
+    "ustLimit": 499999,
+    "vadesizdeKalacak": 30000,
+    "yillikBrutOran": 0.45,
+    "not": ""
+  },
+  {
+    "banka": "ING ilk defa müşteri kampanyası",
+    "altLimit": 500000,
+    "ustLimit": 999999,
+    "vadesizdeKalacak": 75000,
+    "yillikBrutOran": 0.45,
+    "not": ""
+  },
+  {
+    "banka": "ING ilk defa müşteri kampanyası",
+    "altLimit": 1000000,
+    "ustLimit": 1999999,
+    "vadesizdeKalacak": 150000,
+    "yillikBrutOran": 0.45,
+    "not": ""
+  },
+  {
+    "banka": "ING ilk defa müşteri kampanyası",
+    "altLimit": 2000000,
+    "ustLimit": 4999999,
+    "vadesizdeKalacak": 285000,
+    "yillikBrutOran": 0.45,
+    "not": ""
+  },
+  {
+    "banka": "ING ilk defa müşteri kampanyası",
+    "altLimit": 5000000,
+    "ustLimit": 7499999,
+    "vadesizdeKalacak": 600000,
+    "yillikBrutOran": 0.45,
+    "not": ""
+  },
+  {
+    "banka": "ING ilk defa müşteri kampanyası",
+    "altLimit": 7500000,
+    "ustLimit": 9999999,
+    "vadesizdeKalacak": 900000,
+    "yillikBrutOran": 0.45,
+    "not": ""
+  },
+  {
+    "banka": "ING ilk defa müşteri kampanyası",
+    "altLimit": 10000000,
+    "ustLimit": 14999999,
+    "vadesizdeKalacak": 1250000,
+    "yillikBrutOran": 0.45,
+    "not": ""
+  },
+  {
+    "banka": "ING ilk defa müşteri kampanyası",
+    "altLimit": 15000000,
+    "ustLimit": 24999999,
+    "vadesizdeKalacak": 2000000,
+    "yillikBrutOran": 0.45,
+    "not": ""
+  },
+  {
+    "banka": "ING ilk defa müşteri kampanyası",
+    "altLimit": 25000000,
+    "ustLimit": 34999999,
+    "vadesizdeKalacak": 3000000,
+    "yillikBrutOran": 0.45,
+    "not": ""
+  },
+  {
+    "banka": "ING ilk defa müşteri kampanyası",
+    "altLimit": 35000000,
+    "ustLimit": 9999999999,
+    "vadesizdeKalacak": 3000000,
+    "yillikBrutOran": 0.23,
+    "not": ""
+  },
+  {
+    "banka": "ING Hoş geldin",
+    "altLimit": 10000,
+    "ustLimit": 49999,
+    "vadesizdeKalacak": 5000,
+    "yillikBrutOran": 0.4,
+    "not": ""
+  },
+  {
+    "banka": "ING Hoş geldin",
+    "altLimit": 50000,
+    "ustLimit": 99999,
+    "vadesizdeKalacak": 7500,
+    "yillikBrutOran": 0.4,
+    "not": ""
+  },
+  {
+    "banka": "ING Hoş geldin",
+    "altLimit": 100000,
+    "ustLimit": 249999,
+    "vadesizdeKalacak": 15000,
+    "yillikBrutOran": 0.4,
+    "not": ""
+  },
+  {
+    "banka": "ING Hoş geldin",
+    "altLimit": 250000,
+    "ustLimit": 499999,
+    "vadesizdeKalacak": 30000,
+    "yillikBrutOran": 0.4,
+    "not": ""
+  },
+  {
+    "banka": "ING Hoş geldin",
+    "altLimit": 500000,
+    "ustLimit": 999999,
+    "vadesizdeKalacak": 75000,
+    "yillikBrutOran": 0.4,
+    "not": ""
+  },
+  {
+    "banka": "ING Hoş geldin",
+    "altLimit": 1000000,
+    "ustLimit": 1999999,
+    "vadesizdeKalacak": 150000,
+    "yillikBrutOran": 0.4,
+    "not": ""
+  },
+  {
+    "banka": "ING Hoş geldin",
+    "altLimit": 2000000,
+    "ustLimit": 4999999,
+    "vadesizdeKalacak": 285000,
+    "yillikBrutOran": 0.4,
+    "not": ""
+  },
+  {
+    "banka": "ING Hoş geldin",
+    "altLimit": 5000000,
+    "ustLimit": 7499999,
+    "vadesizdeKalacak": 600000,
+    "yillikBrutOran": 0.4,
+    "not": ""
+  },
+  {
+    "banka": "ING Hoş geldin",
+    "altLimit": 7500000,
+    "ustLimit": 9999999,
+    "vadesizdeKalacak": 900000,
+    "yillikBrutOran": 0.4,
+    "not": ""
+  },
+  {
+    "banka": "ING Hoş geldin",
+    "altLimit": 10000000,
+    "ustLimit": 14999999,
+    "vadesizdeKalacak": 1250000,
+    "yillikBrutOran": 0.4,
+    "not": ""
+  },
+  {
+    "banka": "ING Hoş geldin",
+    "altLimit": 15000000,
+    "ustLimit": 24999999,
+    "vadesizdeKalacak": 2000000,
+    "yillikBrutOran": 0.4,
+    "not": ""
+  },
+  {
+    "banka": "ING Hoş geldin",
+    "altLimit": 25000000,
+    "ustLimit": 34999999,
+    "vadesizdeKalacak": 3000000,
+    "yillikBrutOran": 0.4,
+    "not": ""
+  },
+  {
+    "banka": "ING Hoş geldin",
+    "altLimit": 35000000,
+    "ustLimit": 9999999999,
+    "vadesizdeKalacak": 3000000,
+    "yillikBrutOran": 0.23,
+    "not": ""
+  }
+]

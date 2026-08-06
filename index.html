@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Günlük Mevduat Karşılaştırma</title>
+
+  <meta name="description" content="Ana para tutarınıza göre bankaların günlük kazandıran hesaplarını karşılaştırın" />
+  <meta name="theme-color" content="#0b1f3a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Mevduat Karşı." />
+
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="hero">
+      <h1 class="hero-title">Günlük Mevduat Karşılaştırma</h1>
+      <p class="hero-subtitle">Güncel oranlarla karşılaştırın</p>
+    </header>
+
+    <main class="content">
+      <section class="input-card" aria-label="Ana para girişi">
+        <label for="principal" class="input-label">Yatırılacak Tutar</label>
+        <div class="input-wrap">
+          <input
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            id="principal"
+            name="principal"
+            placeholder="Örn. 150000"
+            autocomplete="off"
+          />
+          <span class="currency-suffix">₺</span>
+        </div>
+        <p id="input-error" class="input-error" hidden></p>
+        <button id="calculate-btn" class="btn-primary" type="button">Hesapla</button>
+      </section>
+
+      <section id="results-section" class="results-section" hidden aria-live="polite">
+        <h2 class="results-title">Günlük Net Getiri</h2>
+        <div id="results-list" class="results-list"></div>
+      </section>
+    </main>
+
+    <footer class="disclaimer">
+      Hesaplamalar %17,5 stopaj ve 365 gün üzerinden yapılır.
+    </footer>
+  </div>
+
+  <template id="bank-card-template">
+    <article class="bank-card">
+      <div class="bank-card-top">
+        <div class="bank-card-heading">
+          <span class="rank-badge"></span>
+          <span class="bank-name"></span>
+        </div>
+        <div class="rate-box">
+          <span class="rate-value"></span>
+          <span class="rate-effective"></span>
+        </div>
+      </div>
+
+      <div class="main-result">
+        <span class="main-result-label">Günlük Net Getiri</span>
+        <span class="main-result-value"></span>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat">
+          <span class="stat-label">Vadesizde Kalan</span>
+          <span class="stat-value stat-vadesiz"></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Değerlenecek Tutar</span>
+          <span class="stat-value stat-degerlenecek"></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">30 Günde Net Getiri</span>
+          <span class="stat-value stat-otuzgun"></span>
+        </div>
+      </div>
+
+      <p class="bank-note" hidden></p>
+    </article>
+  </template>
+
+  <template id="ineligible-card-template">
+    <article class="bank-card bank-card-ineligible">
+      <div class="bank-card-top">
+        <div class="bank-card-heading">
+          <span class="rank-badge"></span>
+          <span class="bank-name"></span>
+        </div>
+      </div>
+
+      <p class="ineligible-message"></p>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>

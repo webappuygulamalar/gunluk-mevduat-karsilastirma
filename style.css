@@ -1,0 +1,338 @@
+:root {
+  color-scheme: light;
+  --navy: #0b1f3a;
+  --navy-soft: #16305a;
+  --turquoise: #14b8a6;
+  --turquoise-dark: #0d9488;
+  --turquoise-tint: #e6fbf8;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --border: #e5e9f0;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --text-inverse: #f8fafc;
+  --danger: #dc2626;
+  --shadow: 0 12px 28px -12px rgba(11, 31, 58, 0.18);
+  --shadow-sm: 0 4px 12px -6px rgba(11, 31, 58, 0.15);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+  line-height: 1.5;
+}
+
+.app {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.hero {
+  background: linear-gradient(160deg, var(--navy) 0%, var(--navy-soft) 100%);
+  color: var(--text-inverse);
+  padding: calc(env(safe-area-inset-top) + 2.25rem) 1.5rem 3.5rem;
+  text-align: center;
+}
+
+.hero-title {
+  margin: 0 0 0.4rem;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.hero-subtitle {
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(248, 250, 252, 0.75);
+}
+
+/* Content container */
+.content {
+  flex: 1;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 1.25rem 2.5rem;
+}
+
+/* Input card — pulled up to overlap the header for a polished, cohesive look */
+.input-card {
+  background: var(--surface);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  padding: 1.75rem 1.5rem;
+  margin-top: -2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.input-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+#principal {
+  width: 100%;
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text);
+  background: #f8fafc;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 0.9rem 2.75rem 0.9rem 1rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+#principal:focus {
+  border-color: var(--turquoise);
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.18);
+}
+
+.currency-suffix {
+  position: absolute;
+  right: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.input-error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+
+.btn-primary {
+  margin-top: 0.4rem;
+  background: var(--turquoise);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 0.95rem 1rem;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.05s ease;
+}
+
+.btn-primary:hover {
+  background: var(--turquoise-dark);
+}
+
+.btn-primary:active {
+  transform: scale(0.99);
+}
+
+.btn-primary:focus-visible {
+  outline: 3px solid rgba(20, 184, 166, 0.4);
+  outline-offset: 2px;
+}
+
+/* Results */
+.results-section {
+  margin-top: 2rem;
+}
+
+.results-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 1rem;
+}
+
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.bank-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-sm);
+  padding: 1.25rem 1.25rem 1.1rem;
+}
+
+.bank-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+.bank-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.rank-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 8px;
+  background: var(--turquoise-tint);
+  color: var(--turquoise-dark);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.bank-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.rate-box {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.rate-value {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--turquoise-dark);
+}
+
+.rate-effective {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.main-result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.9rem 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.9rem;
+}
+
+.main-result-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.main-result-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--navy);
+  letter-spacing: -0.01em;
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.stat-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.bank-note {
+  margin: 0.85rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--border);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.bank-card-ineligible {
+  background: #fafbfc;
+}
+
+.ineligible-message {
+  margin: 0;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* Footer */
+.disclaimer {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding: 1.25rem 1.5rem calc(env(safe-area-inset-bottom) + 1.25rem);
+}
+
+/* Desktop refinement */
+@media (min-width: 640px) {
+  .hero {
+    padding: 3rem 1.5rem 4.5rem;
+  }
+
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1.05rem;
+  }
+
+  .input-card {
+    padding: 2.25rem 2rem;
+    margin-top: -3rem;
+  }
+
+  .stats-row {
+    gap: 1.25rem;
+  }
+}
