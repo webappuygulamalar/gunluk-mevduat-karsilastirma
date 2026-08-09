@@ -131,6 +131,7 @@ function calculateResult(entry, principal) {
     gunlukNetGetiri,
     otuzGunNetGetiri,
     etkinBrutOran,
+    gerekliFonBakiyesi: entry.gerekliFonBakiyesi ?? null,
   };
 }
 
@@ -175,6 +176,14 @@ function renderEligibleCard(result, rank) {
   if (result.not) {
     noteEl.textContent = result.not;
     noteEl.hidden = false;
+  }
+
+  const fundNoteEl = node.querySelector(".fund-note");
+  if (result.gerekliFonBakiyesi) {
+    fundNoteEl.textContent = `Bu orandan yararlanmak için en az ${formatWholeTL(
+      result.gerekliFonBakiyesi
+    )} Fiba Portföy TL yatırım fonu bulundurulması gerekir.`;
+    fundNoteEl.hidden = false;
   }
 
   return node;

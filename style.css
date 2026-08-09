@@ -292,6 +292,16 @@ body {
   color: var(--text-muted);
 }
 
+.fund-note {
+  margin: 0.6rem 0 0;
+  padding: 0.6rem 0.75rem;
+  background: var(--turquoise-tint);
+  border-radius: 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--turquoise-dark);
+}
+
 .bank-card-ineligible {
   background: #fafbfc;
 }
