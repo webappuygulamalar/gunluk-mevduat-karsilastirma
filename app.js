@@ -83,7 +83,7 @@ function formatWholeTL(value) {
 }
 
 async function loadBankData() {
-  const response = await fetch("data/banks.json");
+  const response = await fetch("data/banks.json", { cache: "no-store" });
   if (!response.ok) {
     throw new Error(`Banka verisi yüklenemedi (${response.status})`);
   }

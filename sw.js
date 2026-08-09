@@ -1,4 +1,4 @@
-const CACHE_NAME = "gunluk-mevduat-v9";
+const CACHE_NAME = "gunluk-mevduat-v10";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -27,8 +27,33 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+async function networkFirst(request, fetchInit) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const response = fetchInit
+      ? await fetch(request, fetchInit)
+      : await fetch(request);
+    if (response && response.ok) {
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (err) {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    throw err;
+  }
+}
+
 self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") return;
+
+  const url = new URL(event.request.url);
+  const isBankData = url.pathname.endsWith("/data/banks.json");
+
+  // Her açılışta önce ağdan güncel veri denenir; internet yoksa önbellekteki
+  // son sürüme düşülür. banks.json için tarayıcı HTTP önbelleği de devre
+  // dışı bırakılır, aksi halde eski oranlar bir süre daha görünmeye devam edebilir.
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    networkFirst(event.request, isBankData ? { cache: "no-store" } : undefined)
   );
 });
