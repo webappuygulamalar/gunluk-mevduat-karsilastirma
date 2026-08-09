@@ -18,6 +18,13 @@ const tlFormatter = new Intl.NumberFormat("tr-TR", {
   maximumFractionDigits: 2,
 });
 
+const tlWholeFormatter = new Intl.NumberFormat("tr-TR", {
+  style: "currency",
+  currency: "TRY",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
 const percentFormatter = new Intl.NumberFormat("tr-TR", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -25,6 +32,10 @@ const percentFormatter = new Intl.NumberFormat("tr-TR", {
 
 function formatTL(value) {
   return tlFormatter.format(value);
+}
+
+function formatTLWhole(value) {
+  return tlWholeFormatter.format(value);
 }
 
 function formatPercent(decimalRatio) {
@@ -150,10 +161,10 @@ function renderEligibleCard(result, rank) {
     result.gunlukNetGetiri
   );
 
-  node.querySelector(".stat-vadesiz").textContent = formatTL(
+  node.querySelector(".stat-vadesiz").textContent = formatTLWhole(
     result.vadesizdeKalan
   );
-  node.querySelector(".stat-degerlenecek").textContent = formatTL(
+  node.querySelector(".stat-degerlenecek").textContent = formatTLWhole(
     result.degerlenecekTutar
   );
   node.querySelector(".stat-otuzgun").textContent = formatTL(

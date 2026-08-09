@@ -1,6 +1,6 @@
 {
   "name": "Günlük Mevduat Karşılaştırma",
-  "short_name": "Mevduat Karşı.",
+  "short_name": "Günlük Mevduat Karşılaştırma",
   "description": "Ana para tutarınıza göre bankaların günlük kazandıran hesaplarını karşılaştırın",
   "start_url": "./index.html",
   "scope": "./",
