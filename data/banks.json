@@ -730,5 +730,261 @@
     "vadesizdeKalacak": 3000000,
     "yillikBrutOran": 0.23,
     "not": ""
+  },
+  {
+    "banka": "Odeabank Oksijen Hoş Geldin",
+    "altLimit": 0,
+    "ustLimit": 25000,
+    "vadesizdeKalacak": 7500,
+    "yillikBrutOran": 0.45,
+    "not": "Hoş geldin oranı 100 gün geçerlidir."
+  },
+  {
+    "banka": "Odeabank Oksijen Hoş Geldin",
+    "altLimit": 25001,
+    "ustLimit": 50000,
+    "vadesizdeKalacak": 7500,
+    "yillikBrutOran": 0.45,
+    "not": "Hoş geldin oranı 100 gün geçerlidir."
+  },
+  {
+    "banka": "Odeabank Oksijen Hoş Geldin",
+    "altLimit": 50001,
+    "ustLimit": 100000,
+    "vadesizdeKalacak": 10000,
+    "yillikBrutOran": 0.45,
+    "not": "Hoş geldin oranı 100 gün geçerlidir."
+  },
+  {
+    "banka": "Odeabank Oksijen Hoş Geldin",
+    "altLimit": 100001,
+    "ustLimit": 250000,
+    "vadesizdeKalacak": 20000,
+    "yillikBrutOran": 0.45,
+    "not": "Hoş geldin oranı 100 gün geçerlidir."
+  },
+  {
+    "banka": "Odeabank Oksijen Hoş Geldin",
+    "altLimit": 250001,
+    "ustLimit": 500000,
+    "vadesizdeKalacak": 40000,
+    "yillikBrutOran": 0.45,
+    "not": "Hoş geldin oranı 100 gün geçerlidir."
+  },
+  {
+    "banka": "Odeabank Oksijen Hoş Geldin",
+    "altLimit": 500001,
+    "ustLimit": 750000,
+    "vadesizdeKalacak": 75000,
+    "yillikBrutOran": 0.45,
+    "not": "Hoş geldin oranı 100 gün geçerlidir."
+  },
+  {
+    "banka": "Odeabank Oksijen Hoş Geldin",
+    "altLimit": 750001,
+    "ustLimit": 1000000,
+    "vadesizdeKalacak": 125000,
+    "yillikBrutOran": 0.45,
+    "not": "Hoş geldin oranı 100 gün geçerlidir."
+  },
+  {
+    "banka": "Odeabank Oksijen Hoş Geldin",
+    "altLimit": 1000001,
+    "ustLimit": 2000000,
+    "vadesizdeKalacak": 200000,
+    "yillikBrutOran": 0.45,
+    "not": "Hoş geldin oranı 100 gün geçerlidir."
+  },
+  {
+    "banka": "Odeabank Oksijen Hoş Geldin",
+    "altLimit": 2000001,
+    "ustLimit": 3000000,
+    "vadesizdeKalacak": 350000,
+    "yillikBrutOran": 0.45,
+    "not": "Hoş geldin oranı 100 gün geçerlidir."
+  },
+  {
+    "banka": "Odeabank Oksijen Hoş Geldin",
+    "altLimit": 3000001,
+    "ustLimit": 4000000,
+    "vadesizdeKalacak": 450000,
+    "yillikBrutOran": 0.45,
+    "not": "Hoş geldin oranı 100 gün geçerlidir."
+  },
+  {
+    "banka": "Odeabank Oksijen Hoş Geldin",
+    "altLimit": 4000001,
+    "ustLimit": 5000000,
+    "vadesizdeKalacak": 600000,
+    "yillikBrutOran": 0.45,
+    "not": "Hoş geldin oranı 100 gün geçerlidir."
+  },
+  {
+    "banka": "Odeabank Oksijen Hoş Geldin",
+    "altLimit": 5000001,
+    "ustLimit": 6000000,
+    "vadesizdeKalacak": 750000,
+    "yillikBrutOran": 0.45,
+    "not": "Hoş geldin oranı 100 gün geçerlidir."
+  },
+  {
+    "banka": "Odeabank Oksijen Hoş Geldin",
+    "altLimit": 6000001,
+    "ustLimit": 7000000,
+    "vadesizdeKalacak": 900000,
+    "yillikBrutOran": 0.45,
+    "not": "Hoş geldin oranı 100 gün geçerlidir."
+  },
+  {
+    "banka": "Odeabank Oksijen Hoş Geldin",
+    "altLimit": 7000001,
+    "ustLimit": 10000000,
+    "vadesizdeKalacak": 1000000,
+    "yillikBrutOran": 0.45,
+    "not": "Hoş geldin oranı 100 gün geçerlidir."
+  },
+  {
+    "banka": "Odeabank Oksijen Hoş Geldin",
+    "altLimit": 10000001,
+    "ustLimit": 20000000,
+    "vadesizdeKalacak": 1500000,
+    "yillikBrutOran": 0.45,
+    "not": "Hoş geldin oranı 100 gün geçerlidir."
+  },
+  {
+    "banka": "Odeabank Oksijen Hoş Geldin",
+    "altLimit": 20000001,
+    "ustLimit": 25000000,
+    "vadesizdeKalacak": 2000000,
+    "yillikBrutOran": 0.135,
+    "not": "Hoş geldin oranı 100 gün geçerlidir."
+  },
+  {
+    "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
+    "altLimit": 0,
+    "ustLimit": 25000,
+    "vadesizdeKalacak": 7500,
+    "yillikBrutOran": 0.46,
+    "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
+  },
+  {
+    "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
+    "altLimit": 25001,
+    "ustLimit": 50000,
+    "vadesizdeKalacak": 7500,
+    "yillikBrutOran": 0.46,
+    "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
+  },
+  {
+    "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
+    "altLimit": 50001,
+    "ustLimit": 100000,
+    "vadesizdeKalacak": 10000,
+    "yillikBrutOran": 0.46,
+    "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
+  },
+  {
+    "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
+    "altLimit": 100001,
+    "ustLimit": 250000,
+    "vadesizdeKalacak": 20000,
+    "yillikBrutOran": 0.46,
+    "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
+  },
+  {
+    "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
+    "altLimit": 250001,
+    "ustLimit": 500000,
+    "vadesizdeKalacak": 40000,
+    "yillikBrutOran": 0.46,
+    "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
+  },
+  {
+    "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
+    "altLimit": 500001,
+    "ustLimit": 750000,
+    "vadesizdeKalacak": 75000,
+    "yillikBrutOran": 0.46,
+    "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
+  },
+  {
+    "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
+    "altLimit": 750001,
+    "ustLimit": 1000000,
+    "vadesizdeKalacak": 125000,
+    "yillikBrutOran": 0.46,
+    "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
+  },
+  {
+    "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
+    "altLimit": 1000001,
+    "ustLimit": 2000000,
+    "vadesizdeKalacak": 200000,
+    "yillikBrutOran": 0.46,
+    "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
+  },
+  {
+    "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
+    "altLimit": 2000001,
+    "ustLimit": 3000000,
+    "vadesizdeKalacak": 350000,
+    "yillikBrutOran": 0.46,
+    "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
+  },
+  {
+    "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
+    "altLimit": 3000001,
+    "ustLimit": 4000000,
+    "vadesizdeKalacak": 450000,
+    "yillikBrutOran": 0.46,
+    "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
+  },
+  {
+    "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
+    "altLimit": 4000001,
+    "ustLimit": 5000000,
+    "vadesizdeKalacak": 600000,
+    "yillikBrutOran": 0.46,
+    "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
+  },
+  {
+    "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
+    "altLimit": 5000001,
+    "ustLimit": 6000000,
+    "vadesizdeKalacak": 750000,
+    "yillikBrutOran": 0.46,
+    "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
+  },
+  {
+    "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
+    "altLimit": 6000001,
+    "ustLimit": 7000000,
+    "vadesizdeKalacak": 900000,
+    "yillikBrutOran": 0.46,
+    "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
+  },
+  {
+    "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
+    "altLimit": 7000001,
+    "ustLimit": 10000000,
+    "vadesizdeKalacak": 1000000,
+    "yillikBrutOran": 0.46,
+    "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
+  },
+  {
+    "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
+    "altLimit": 10000001,
+    "ustLimit": 20000000,
+    "vadesizdeKalacak": 1500000,
+    "yillikBrutOran": 0.46,
+    "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
+  },
+  {
+    "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
+    "altLimit": 20000001,
+    "ustLimit": 25000000,
+    "vadesizdeKalacak": 2000000,
+    "yillikBrutOran": 0.135,
+    "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   }
 ]
