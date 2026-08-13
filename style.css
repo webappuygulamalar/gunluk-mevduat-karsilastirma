@@ -122,6 +122,25 @@ body {
   pointer-events: none;
 }
 
+#gun-sayisi {
+  width: 100%;
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text);
+  background: #f8fafc;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 0.9rem 1rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+#gun-sayisi:focus {
+  border-color: var(--turquoise);
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.18);
+}
+
 .input-error {
   margin: 0;
   font-size: 0.85rem;

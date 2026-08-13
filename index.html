@@ -41,6 +41,21 @@
           <span class="currency-suffix">₺</span>
         </div>
         <p id="input-error" class="input-error" hidden></p>
+
+        <label for="gun-sayisi" class="input-label">Değerlendirme Süresi (Gün)</label>
+        <div class="input-wrap">
+          <input
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            id="gun-sayisi"
+            name="gunSayisi"
+            placeholder="Örn. 30"
+            autocomplete="off"
+          />
+        </div>
+        <p id="gun-sayisi-error" class="input-error" hidden></p>
+
         <button id="calculate-btn" class="btn-primary" type="button">Hesapla</button>
       </section>
 
@@ -83,7 +98,7 @@
           <span class="stat-value stat-degerlenecek"></span>
         </div>
         <div class="stat">
-          <span class="stat-label">30 Günde Net Getiri</span>
+          <span class="stat-label stat-label-donem">Dönemde Net Getiri</span>
           <span class="stat-value stat-otuzgun"></span>
         </div>
       </div>

@@ -2,9 +2,12 @@ const PINNED_BANK = "TOM Bank";
 const STOPAJ_ORANI = 0.175;
 const NET_KATSAYI = 1 - STOPAJ_ORANI; // 0.825
 const YIL_GUN = 365;
+const MAX_GUN_SAYISI = 3650;
 
 const principalInput = document.getElementById("principal");
 const inputError = document.getElementById("input-error");
+const gunSayisiInput = document.getElementById("gun-sayisi");
+const gunSayisiError = document.getElementById("gun-sayisi-error");
 const calculateBtn = document.getElementById("calculate-btn");
 const resultsSection = document.getElementById("results-section");
 const resultsList = document.getElementById("results-list");
@@ -113,12 +116,38 @@ function buildIneligibleMessage(entries, principal) {
   return `Bu ürün en fazla ${formatWholeTL(maxUstLimit)} için kullanılabilir.`;
 }
 
-function calculateResult(entry, principal) {
+function resolveSimulationBand(entries, balance) {
+  const band = findBandForBank(entries, balance);
+  if (band) return band;
+  // Bakiye tüm dilimlerin üst sınırını aştıysa, üst sınırı en yüksek
+  // dilimin oranıyla devam edilir (bankanın en üst diliminin sınırsız
+  // kabul edilmesi, gerçek uygulamadaki davranışa en yakın varsayımdır).
+  const maxUstLimit = getMaxUstLimit(entries);
+  if (balance > maxUstLimit) {
+    return entries.reduce((top, e) => (e.ustLimit > top.ustLimit ? e : top));
+  }
+  return null;
+}
+
+function simulateCompoundNetReturn(entries, principal, days) {
+  let balance = principal;
+  for (let day = 0; day < days; day++) {
+    const band = resolveSimulationBand(entries, balance);
+    if (!band) break;
+    const degerlenecekTutar = Math.max(0, balance - band.vadesizdeKalacak);
+    const gunlukBrutGetiri = (degerlenecekTutar * band.yillikBrutOran) / YIL_GUN;
+    const gunlukNetGetiri = gunlukBrutGetiri * NET_KATSAYI;
+    balance += gunlukNetGetiri;
+  }
+  return balance - principal;
+}
+
+function calculateResult(entry, entries, principal, gunSayisi) {
   const vadesizdeKalan = entry.vadesizdeKalacak;
   const degerlenecekTutar = Math.max(0, principal - vadesizdeKalan);
   const gunlukBrutGetiri = (degerlenecekTutar * entry.yillikBrutOran) / YIL_GUN;
   const gunlukNetGetiri = gunlukBrutGetiri * NET_KATSAYI;
-  const otuzGunNetGetiri = gunlukNetGetiri * 30;
+  const donemNetGetiri = simulateCompoundNetReturn(entries, principal, gunSayisi);
   const etkinBrutOran =
     principal > 0 ? (degerlenecekTutar * entry.yillikBrutOran) / principal : 0;
 
@@ -129,7 +158,8 @@ function calculateResult(entry, principal) {
     vadesizdeKalan,
     degerlenecekTutar,
     gunlukNetGetiri,
-    otuzGunNetGetiri,
+    donemNetGetiri,
+    gunSayisi,
     etkinBrutOran,
     gerekliFonBakiyesi: entry.gerekliFonBakiyesi ?? null,
   };
@@ -168,8 +198,9 @@ function renderEligibleCard(result, rank) {
   node.querySelector(".stat-degerlenecek").textContent = formatTLWhole(
     result.degerlenecekTutar
   );
+  node.querySelector(".stat-label-donem").textContent = `${result.gunSayisi} Günde Net Getiri`;
   node.querySelector(".stat-otuzgun").textContent = formatTL(
-    result.otuzGunNetGetiri
+    result.donemNetGetiri
   );
 
   const noteEl = node.querySelector(".bank-note");
@@ -224,11 +255,23 @@ function clearInputError() {
   inputError.textContent = "";
 }
 
+function showGunSayisiError(message) {
+  gunSayisiError.textContent = message;
+  gunSayisiError.hidden = false;
+}
+
+function clearGunSayisiError() {
+  gunSayisiError.hidden = true;
+  gunSayisiError.textContent = "";
+}
+
 async function handleCalculate() {
   clearInputError();
+  clearGunSayisiError();
   resultsSection.hidden = true;
 
   const principal = parsePrincipalInput(principalInput.value);
+  const gunSayisi = parsePrincipalInput(gunSayisiInput.value);
 
   if (!digitsOnly(principalInput.value)) {
     showInputError("Lütfen bir tutar girin.");
@@ -236,6 +279,19 @@ async function handleCalculate() {
   }
   if (!Number.isFinite(principal) || principal <= 0) {
     showInputError("Lütfen geçerli bir tutar girin.");
+    return;
+  }
+
+  if (!digitsOnly(gunSayisiInput.value)) {
+    showGunSayisiError("Lütfen değerlendirme süresini gün olarak girin.");
+    return;
+  }
+  if (!Number.isFinite(gunSayisi) || gunSayisi <= 0) {
+    showGunSayisiError("Lütfen geçerli bir gün sayısı girin.");
+    return;
+  }
+  if (gunSayisi > MAX_GUN_SAYISI) {
+    showGunSayisiError(`Değerlendirme süresi en fazla ${MAX_GUN_SAYISI} gün olabilir.`);
     return;
   }
 
@@ -249,7 +305,10 @@ async function handleCalculate() {
     const evaluateBank = (banka, entries) => {
       const band = findBandForBank(entries, principal);
       if (band) {
-        return { type: "eligible", data: calculateResult(band, principal) };
+        return {
+          type: "eligible",
+          data: calculateResult(band, entries, principal, gunSayisi),
+        };
       }
       return {
         type: "ineligible",
@@ -292,6 +351,11 @@ principalInput.addEventListener("keydown", (event) => {
     handleCalculate();
   }
 });
+gunSayisiInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    handleCalculate();
+  }
+});
 
 principalInput.addEventListener("input", () => {
   const cursorPos = principalInput.selectionStart ?? principalInput.value.length;
@@ -302,6 +366,17 @@ principalInput.addEventListener("input", () => {
 
   const newCursorPos = indexAfterNthDigit(formatted, digitsBeforeCursor);
   principalInput.setSelectionRange(newCursorPos, newCursorPos);
+});
+
+gunSayisiInput.addEventListener("input", () => {
+  const cursorPos = gunSayisiInput.selectionStart ?? gunSayisiInput.value.length;
+  const digitsBeforeCursor = countDigitsBeforeIndex(gunSayisiInput.value, cursorPos);
+
+  const cleaned = digitsOnly(gunSayisiInput.value);
+  gunSayisiInput.value = cleaned;
+
+  const newCursorPos = Math.min(digitsBeforeCursor, cleaned.length);
+  gunSayisiInput.setSelectionRange(newCursorPos, newCursorPos);
 });
 
 if ("serviceWorker" in navigator) {
