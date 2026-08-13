@@ -116,40 +116,27 @@ function buildIneligibleMessage(entries, principal) {
   return `Bu ürün en fazla ${formatWholeTL(maxUstLimit)} için kullanılabilir.`;
 }
 
-function resolveSimulationBand(entries, balance) {
-  const band = findBandForBank(entries, balance);
-  if (band) return band;
-  // Bakiye tüm dilimlerin üst sınırını aştıysa, üst sınırı en yüksek
-  // dilimin oranıyla devam edilir (bankanın en üst diliminin sınırsız
-  // kabul edilmesi, gerçek uygulamadaki davranışa en yakın varsayımdır).
-  const maxUstLimit = getMaxUstLimit(entries);
-  if (balance > maxUstLimit) {
-    return entries.reduce((top, e) => (e.ustLimit > top.ustLimit ? e : top));
-  }
-  return null;
-}
-
-function simulateCompoundNetReturn(entries, principal, days) {
+function simulateCompoundNetReturn(entry, principal, days) {
   let balance = principal;
   for (let day = 0; day < days; day++) {
-    const band = resolveSimulationBand(entries, balance);
-    if (!band) break;
-    const degerlenecekTutar = Math.max(0, balance - band.vadesizdeKalacak);
-    const gunlukBrutGetiri = (degerlenecekTutar * band.yillikBrutOran) / YIL_GUN;
+    const degerlenecekTutar = Math.max(0, balance - entry.vadesizdeKalacak);
+    const gunlukBrutGetiri = (degerlenecekTutar * entry.yillikBrutOran) / YIL_GUN;
     const gunlukNetGetiri = gunlukBrutGetiri * NET_KATSAYI;
     balance += gunlukNetGetiri;
   }
   return balance - principal;
 }
 
-function calculateResult(entry, entries, principal, gunSayisi) {
+function calculateResult(entry, principal, gunSayisi) {
   const vadesizdeKalan = entry.vadesizdeKalacak;
   const degerlenecekTutar = Math.max(0, principal - vadesizdeKalan);
   const gunlukBrutGetiri = (degerlenecekTutar * entry.yillikBrutOran) / YIL_GUN;
   const gunlukNetGetiri = gunlukBrutGetiri * NET_KATSAYI;
-  const donemNetGetiri = simulateCompoundNetReturn(entries, principal, gunSayisi);
-  const etkinBrutOran =
-    principal > 0 ? (degerlenecekTutar * entry.yillikBrutOran) / principal : 0;
+  const donemNetGetiri = simulateCompoundNetReturn(entry, principal, gunSayisi);
+  const vadeliMevduatEsdegeri =
+    principal > 0 && gunSayisi > 0
+      ? ((donemNetGetiri / principal) * (YIL_GUN / gunSayisi)) / NET_KATSAYI
+      : 0;
 
   return {
     banka: entry.banka,
@@ -160,7 +147,7 @@ function calculateResult(entry, entries, principal, gunSayisi) {
     gunlukNetGetiri,
     donemNetGetiri,
     gunSayisi,
-    etkinBrutOran,
+    vadeliMevduatEsdegeri,
     gerekliFonBakiyesi: entry.gerekliFonBakiyesi ?? null,
   };
 }
@@ -184,8 +171,8 @@ function renderEligibleCard(result, rank) {
   node.querySelector(".rate-value").textContent = formatPercent(
     result.yillikBrutOran
   );
-  node.querySelector(".rate-effective").textContent = `Etkin: ${formatPercent(
-    result.etkinBrutOran
+  node.querySelector(".rate-effective").textContent = `Vadeli Mevduat Eşdeğeri: ${formatPercent(
+    result.vadeliMevduatEsdegeri
   )}`;
 
   node.querySelector(".main-result-value").textContent = formatTL(
@@ -198,7 +185,7 @@ function renderEligibleCard(result, rank) {
   node.querySelector(".stat-degerlenecek").textContent = formatTLWhole(
     result.degerlenecekTutar
   );
-  node.querySelector(".stat-label-donem").textContent = `${result.gunSayisi} Günde Net Getiri`;
+  node.querySelector(".stat-label-donem").textContent = `${result.gunSayisi} Günde Yaklaşık Getiri`;
   node.querySelector(".stat-otuzgun").textContent = formatTL(
     result.donemNetGetiri
   );
@@ -307,7 +294,7 @@ async function handleCalculate() {
       if (band) {
         return {
           type: "eligible",
-          data: calculateResult(band, entries, principal, gunSayisi),
+          data: calculateResult(band, principal, gunSayisi),
         };
       }
       return {
