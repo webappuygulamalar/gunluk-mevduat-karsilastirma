@@ -156,7 +156,7 @@
     "altLimit": 10000,
     "ustLimit": 49999,
     "vadesizdeKalacak": 5000,
-    "yillikBrutOran": 0.435,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
@@ -164,7 +164,7 @@
     "altLimit": 50000,
     "ustLimit": 99999,
     "vadesizdeKalacak": 7500,
-    "yillikBrutOran": 0.435,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
@@ -172,7 +172,7 @@
     "altLimit": 100000,
     "ustLimit": 249999,
     "vadesizdeKalacak": 15000,
-    "yillikBrutOran": 0.435,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
@@ -180,7 +180,7 @@
     "altLimit": 250000,
     "ustLimit": 499999,
     "vadesizdeKalacak": 30000,
-    "yillikBrutOran": 0.435,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
@@ -188,7 +188,7 @@
     "altLimit": 500000,
     "ustLimit": 999999,
     "vadesizdeKalacak": 60000,
-    "yillikBrutOran": 0.435,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
@@ -196,7 +196,7 @@
     "altLimit": 1000000,
     "ustLimit": 1999999,
     "vadesizdeKalacak": 120000,
-    "yillikBrutOran": 0.435,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
@@ -204,15 +204,15 @@
     "altLimit": 2000000,
     "ustLimit": 2999999,
     "vadesizdeKalacak": 200000,
-    "yillikBrutOran": 0.435,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
     "banka": "Yapı Kredi",
     "altLimit": 3000000,
-    "ustLimit": 5000000,
+    "ustLimit": 4999999,
     "vadesizdeKalacak": 300000,
-    "yillikBrutOran": 0.435,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
@@ -220,7 +220,7 @@
     "altLimit": 5000000,
     "ustLimit": 10000000,
     "vadesizdeKalacak": 500000,
-    "yillikBrutOran": 0.435,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
@@ -456,7 +456,7 @@
     "altLimit": 1000001,
     "ustLimit": 1500000,
     "vadesizdeKalacak": 150000,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.455,
     "not": ""
   },
   {
@@ -464,7 +464,7 @@
     "altLimit": 1500001,
     "ustLimit": 2000000,
     "vadesizdeKalacak": 175000,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.455,
     "not": ""
   },
   {
@@ -472,7 +472,7 @@
     "altLimit": 2000001,
     "ustLimit": 3000000,
     "vadesizdeKalacak": 250000,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.455,
     "not": ""
   },
   {
@@ -480,7 +480,7 @@
     "altLimit": 3000001,
     "ustLimit": 4000000,
     "vadesizdeKalacak": 350000,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.455,
     "not": ""
   },
   {
@@ -488,7 +488,7 @@
     "altLimit": 4000001,
     "ustLimit": 5000000,
     "vadesizdeKalacak": 450000,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.455,
     "not": ""
   },
   {
@@ -525,10 +525,18 @@
   },
   {
     "banka": "ING ilk defa müşteri kampanyası",
+    "altLimit": 3000,
+    "ustLimit": 9999,
+    "vadesizdeKalacak": 3000,
+    "yillikBrutOran": 0.44,
+    "not": ""
+  },
+  {
+    "banka": "ING ilk defa müşteri kampanyası",
     "altLimit": 10000,
     "ustLimit": 49999,
     "vadesizdeKalacak": 5000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -536,7 +544,7 @@
     "altLimit": 50000,
     "ustLimit": 99999,
     "vadesizdeKalacak": 7500,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -544,7 +552,7 @@
     "altLimit": 100000,
     "ustLimit": 249999,
     "vadesizdeKalacak": 15000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -552,7 +560,7 @@
     "altLimit": 250000,
     "ustLimit": 499999,
     "vadesizdeKalacak": 30000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -560,7 +568,7 @@
     "altLimit": 500000,
     "ustLimit": 999999,
     "vadesizdeKalacak": 75000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -568,7 +576,7 @@
     "altLimit": 1000000,
     "ustLimit": 1999999,
     "vadesizdeKalacak": 150000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -576,7 +584,7 @@
     "altLimit": 2000000,
     "ustLimit": 4999999,
     "vadesizdeKalacak": 285000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -584,7 +592,7 @@
     "altLimit": 5000000,
     "ustLimit": 7499999,
     "vadesizdeKalacak": 600000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -592,7 +600,7 @@
     "altLimit": 7500000,
     "ustLimit": 9999999,
     "vadesizdeKalacak": 900000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -600,7 +608,7 @@
     "altLimit": 10000000,
     "ustLimit": 14999999,
     "vadesizdeKalacak": 1250000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -608,7 +616,7 @@
     "altLimit": 15000000,
     "ustLimit": 24999999,
     "vadesizdeKalacak": 2000000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -616,7 +624,7 @@
     "altLimit": 25000000,
     "ustLimit": 34999999,
     "vadesizdeKalacak": 3000000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -625,6 +633,14 @@
     "ustLimit": 9999999999,
     "vadesizdeKalacak": 3000000,
     "yillikBrutOran": 0.23,
+    "not": ""
+  },
+  {
+    "banka": "ING Hoş geldin",
+    "altLimit": 3000,
+    "ustLimit": 9999,
+    "vadesizdeKalacak": 3000,
+    "yillikBrutOran": 0.4,
     "not": ""
   },
   {
