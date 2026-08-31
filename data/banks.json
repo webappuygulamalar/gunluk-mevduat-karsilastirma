@@ -44,7 +44,7 @@
     "altLimit": 2500000,
     "ustLimit": 7499999.99,
     "vadesizdeKalacak": 775000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.445,
     "not": ""
   },
   {
@@ -73,7 +73,7 @@
   },
   {
     "banka": "QNB",
-    "altLimit": 7500,
+    "altLimit": 0,
     "ustLimit": 49999,
     "vadesizdeKalacak": 7500,
     "yillikBrutOran": 0.43,
@@ -82,8 +82,16 @@
   {
     "banka": "QNB",
     "altLimit": 50000,
-    "ustLimit": 99999,
+    "ustLimit": 74999,
     "vadesizdeKalacak": 10000,
+    "yillikBrutOran": 0.43,
+    "not": ""
+  },
+  {
+    "banka": "QNB",
+    "altLimit": 75000,
+    "ustLimit": 99999,
+    "vadesizdeKalacak": 12500,
     "yillikBrutOran": 0.43,
     "not": ""
   },
@@ -98,57 +106,105 @@
   {
     "banka": "QNB",
     "altLimit": 250000,
-    "ustLimit": 499999,
+    "ustLimit": 349999,
     "vadesizdeKalacak": 30000,
     "yillikBrutOran": 0.43,
     "not": ""
   },
   {
     "banka": "QNB",
+    "altLimit": 350000,
+    "ustLimit": 499999,
+    "vadesizdeKalacak": 40000,
+    "yillikBrutOran": 0.43,
+    "not": ""
+  },
+  {
+    "banka": "QNB",
     "altLimit": 500000,
-    "ustLimit": 999999,
+    "ustLimit": 749999,
     "vadesizdeKalacak": 60000,
     "yillikBrutOran": 0.43,
     "not": ""
   },
   {
     "banka": "QNB",
+    "altLimit": 750000,
+    "ustLimit": 999999,
+    "vadesizdeKalacak": 75000,
+    "yillikBrutOran": 0.43,
+    "not": ""
+  },
+  {
+    "banka": "QNB",
     "altLimit": 1000000,
-    "ustLimit": 2499999,
+    "ustLimit": 1999999,
     "vadesizdeKalacak": 150000,
     "yillikBrutOran": 0.43,
     "not": ""
   },
   {
     "banka": "QNB",
+    "altLimit": 2000000,
+    "ustLimit": 2499999,
+    "vadesizdeKalacak": 200000,
+    "yillikBrutOran": 0.43,
+    "not": ""
+  },
+  {
+    "banka": "QNB",
     "altLimit": 2500000,
-    "ustLimit": 4999999,
+    "ustLimit": 3499999,
     "vadesizdeKalacak": 300000,
     "yillikBrutOran": 0.43,
     "not": ""
   },
   {
     "banka": "QNB",
+    "altLimit": 3500000,
+    "ustLimit": 4999999,
+    "vadesizdeKalacak": 400000,
+    "yillikBrutOran": 0.43,
+    "not": ""
+  },
+  {
+    "banka": "QNB",
     "altLimit": 5000000,
-    "ustLimit": 9999999,
+    "ustLimit": 7499999,
     "vadesizdeKalacak": 600000,
     "yillikBrutOran": 0.43,
     "not": ""
   },
   {
     "banka": "QNB",
+    "altLimit": 7500000,
+    "ustLimit": 9999999,
+    "vadesizdeKalacak": 850000,
+    "yillikBrutOran": 0.43,
+    "not": ""
+  },
+  {
+    "banka": "QNB",
     "altLimit": 10000000,
+    "ustLimit": 19999999,
+    "vadesizdeKalacak": 1250000,
+    "yillikBrutOran": 0.2775,
+    "not": ""
+  },
+  {
+    "banka": "QNB",
+    "altLimit": 20000000,
     "ustLimit": 29999999,
-    "vadesizdeKalacak": 1000000,
-    "yillikBrutOran": 0.2975,
+    "vadesizdeKalacak": 2000000,
+    "yillikBrutOran": 0.2775,
     "not": ""
   },
   {
     "banka": "QNB",
     "altLimit": 30000000,
     "ustLimit": 9999999999,
-    "vadesizdeKalacak": 1000000,
-    "yillikBrutOran": 0.275,
+    "vadesizdeKalacak": 2000000,
+    "yillikBrutOran": 0.255,
     "not": ""
   },
   {
@@ -156,7 +212,7 @@
     "altLimit": 10000,
     "ustLimit": 49999,
     "vadesizdeKalacak": 5000,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.415,
     "not": ""
   },
   {
@@ -164,7 +220,7 @@
     "altLimit": 50000,
     "ustLimit": 99999,
     "vadesizdeKalacak": 7500,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.415,
     "not": ""
   },
   {
@@ -172,7 +228,7 @@
     "altLimit": 100000,
     "ustLimit": 249999,
     "vadesizdeKalacak": 15000,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.415,
     "not": ""
   },
   {
@@ -180,7 +236,7 @@
     "altLimit": 250000,
     "ustLimit": 499999,
     "vadesizdeKalacak": 30000,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.415,
     "not": ""
   },
   {
@@ -188,7 +244,7 @@
     "altLimit": 500000,
     "ustLimit": 999999,
     "vadesizdeKalacak": 60000,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.415,
     "not": ""
   },
   {
@@ -196,7 +252,7 @@
     "altLimit": 1000000,
     "ustLimit": 1999999,
     "vadesizdeKalacak": 120000,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.415,
     "not": ""
   },
   {
@@ -204,7 +260,7 @@
     "altLimit": 2000000,
     "ustLimit": 2999999,
     "vadesizdeKalacak": 200000,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.415,
     "not": ""
   },
   {
@@ -212,7 +268,7 @@
     "altLimit": 3000000,
     "ustLimit": 4999999,
     "vadesizdeKalacak": 300000,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.415,
     "not": ""
   },
   {
@@ -220,7 +276,7 @@
     "altLimit": 5000000,
     "ustLimit": 10000000,
     "vadesizdeKalacak": 500000,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.415,
     "not": ""
   },
   {
@@ -228,7 +284,7 @@
     "altLimit": 10000,
     "ustLimit": 24999,
     "vadesizdeKalacak": 5000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -236,7 +292,7 @@
     "altLimit": 25000,
     "ustLimit": 49999,
     "vadesizdeKalacak": 7500,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -244,7 +300,7 @@
     "altLimit": 50000,
     "ustLimit": 99999,
     "vadesizdeKalacak": 10000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -252,7 +308,7 @@
     "altLimit": 100000,
     "ustLimit": 249999,
     "vadesizdeKalacak": 20000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -260,7 +316,7 @@
     "altLimit": 250000,
     "ustLimit": 499999,
     "vadesizdeKalacak": 40000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -268,7 +324,7 @@
     "altLimit": 500000,
     "ustLimit": 999999,
     "vadesizdeKalacak": 65000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -276,7 +332,7 @@
     "altLimit": 1000000,
     "ustLimit": 1999999,
     "vadesizdeKalacak": 175000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -284,7 +340,7 @@
     "altLimit": 2000000,
     "ustLimit": 2999999,
     "vadesizdeKalacak": 300000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -292,7 +348,7 @@
     "altLimit": 3000000,
     "ustLimit": 3999999,
     "vadesizdeKalacak": 400000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -300,7 +356,7 @@
     "altLimit": 4000000,
     "ustLimit": 4999999,
     "vadesizdeKalacak": 500000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -308,7 +364,7 @@
     "altLimit": 5000000,
     "ustLimit": 7499999,
     "vadesizdeKalacak": 750000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -316,7 +372,7 @@
     "altLimit": 7500000,
     "ustLimit": 10000000,
     "vadesizdeKalacak": 1000000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -324,115 +380,115 @@
     "altLimit": 10000,
     "ustLimit": 24999,
     "vadesizdeKalacak": 5000,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.45,
     "gerekliFonBakiyesi": 5000,
-    "not": "%46 oran, %44 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 25000,
     "ustLimit": 49999,
     "vadesizdeKalacak": 7500,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.45,
     "gerekliFonBakiyesi": 10000,
-    "not": "%46 oran, %44 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 50000,
     "ustLimit": 99999,
     "vadesizdeKalacak": 10000,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.45,
     "gerekliFonBakiyesi": 20000,
-    "not": "%46 oran, %44 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 100000,
     "ustLimit": 249999,
     "vadesizdeKalacak": 20000,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.45,
     "gerekliFonBakiyesi": 50000,
-    "not": "%46 oran, %44 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 250000,
     "ustLimit": 499999,
     "vadesizdeKalacak": 40000,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.45,
     "gerekliFonBakiyesi": 100000,
-    "not": "%46 oran, %44 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 500000,
     "ustLimit": 999999,
     "vadesizdeKalacak": 65000,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.45,
     "gerekliFonBakiyesi": 200000,
-    "not": "%46 oran, %44 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 1000000,
     "ustLimit": 1999999,
     "vadesizdeKalacak": 175000,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.45,
     "gerekliFonBakiyesi": 400000,
-    "not": "%46 oran, %44 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 2000000,
     "ustLimit": 2999999,
     "vadesizdeKalacak": 300000,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.45,
     "gerekliFonBakiyesi": 600000,
-    "not": "%46 oran, %44 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 3000000,
     "ustLimit": 3999999,
     "vadesizdeKalacak": 400000,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.45,
     "gerekliFonBakiyesi": 800000,
-    "not": "%46 oran, %44 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 4000000,
     "ustLimit": 4999999,
     "vadesizdeKalacak": 500000,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.45,
     "gerekliFonBakiyesi": 1000000,
-    "not": "%46 oran, %44 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 5000000,
     "ustLimit": 7499999,
     "vadesizdeKalacak": 750000,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.45,
     "gerekliFonBakiyesi": 1250000,
-    "not": "%46 oran, %44 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 7500000,
     "ustLimit": 10000000,
     "vadesizdeKalacak": 1000000,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.45,
     "gerekliFonBakiyesi": 1500000,
-    "not": "%46 oran, %44 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Alternatifbank",
     "altLimit": 20000,
     "ustLimit": 250000,
     "vadesizdeKalacak": 20000,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.45,
     "not": ""
   },
   {
@@ -440,7 +496,7 @@
     "altLimit": 250001,
     "ustLimit": 500000,
     "vadesizdeKalacak": 40000,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.45,
     "not": ""
   },
   {
@@ -448,7 +504,7 @@
     "altLimit": 500001,
     "ustLimit": 1000000,
     "vadesizdeKalacak": 75000,
-    "yillikBrutOran": 0.46,
+    "yillikBrutOran": 0.45,
     "not": ""
   },
   {
@@ -456,7 +512,7 @@
     "altLimit": 1000001,
     "ustLimit": 1500000,
     "vadesizdeKalacak": 150000,
-    "yillikBrutOran": 0.455,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -464,7 +520,7 @@
     "altLimit": 1500001,
     "ustLimit": 2000000,
     "vadesizdeKalacak": 175000,
-    "yillikBrutOran": 0.455,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -472,7 +528,7 @@
     "altLimit": 2000001,
     "ustLimit": 3000000,
     "vadesizdeKalacak": 250000,
-    "yillikBrutOran": 0.455,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -480,7 +536,7 @@
     "altLimit": 3000001,
     "ustLimit": 4000000,
     "vadesizdeKalacak": 350000,
-    "yillikBrutOran": 0.455,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -488,7 +544,7 @@
     "altLimit": 4000001,
     "ustLimit": 5000000,
     "vadesizdeKalacak": 450000,
-    "yillikBrutOran": 0.455,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -496,7 +552,7 @@
     "altLimit": 5000001,
     "ustLimit": 7500000,
     "vadesizdeKalacak": 600000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -504,7 +560,7 @@
     "altLimit": 7500001,
     "ustLimit": 10000000,
     "vadesizdeKalacak": 900000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -512,7 +568,7 @@
     "altLimit": 10000001,
     "ustLimit": 15000000,
     "vadesizdeKalacak": 1500000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -640,7 +696,7 @@
     "altLimit": 3000,
     "ustLimit": 9999,
     "vadesizdeKalacak": 3000,
-    "yillikBrutOran": 0.4,
+    "yillikBrutOran": 0.39,
     "not": ""
   },
   {
@@ -648,7 +704,7 @@
     "altLimit": 10000,
     "ustLimit": 49999,
     "vadesizdeKalacak": 5000,
-    "yillikBrutOran": 0.4,
+    "yillikBrutOran": 0.39,
     "not": ""
   },
   {
@@ -656,7 +712,7 @@
     "altLimit": 50000,
     "ustLimit": 99999,
     "vadesizdeKalacak": 7500,
-    "yillikBrutOran": 0.4,
+    "yillikBrutOran": 0.39,
     "not": ""
   },
   {
@@ -664,7 +720,7 @@
     "altLimit": 100000,
     "ustLimit": 249999,
     "vadesizdeKalacak": 15000,
-    "yillikBrutOran": 0.4,
+    "yillikBrutOran": 0.39,
     "not": ""
   },
   {
@@ -672,7 +728,7 @@
     "altLimit": 250000,
     "ustLimit": 499999,
     "vadesizdeKalacak": 30000,
-    "yillikBrutOran": 0.4,
+    "yillikBrutOran": 0.39,
     "not": ""
   },
   {
@@ -680,7 +736,7 @@
     "altLimit": 500000,
     "ustLimit": 999999,
     "vadesizdeKalacak": 75000,
-    "yillikBrutOran": 0.4,
+    "yillikBrutOran": 0.39,
     "not": ""
   },
   {
@@ -688,7 +744,7 @@
     "altLimit": 1000000,
     "ustLimit": 1999999,
     "vadesizdeKalacak": 150000,
-    "yillikBrutOran": 0.4,
+    "yillikBrutOran": 0.39,
     "not": ""
   },
   {
@@ -696,7 +752,7 @@
     "altLimit": 2000000,
     "ustLimit": 4999999,
     "vadesizdeKalacak": 285000,
-    "yillikBrutOran": 0.4,
+    "yillikBrutOran": 0.39,
     "not": ""
   },
   {
@@ -704,7 +760,7 @@
     "altLimit": 5000000,
     "ustLimit": 7499999,
     "vadesizdeKalacak": 600000,
-    "yillikBrutOran": 0.4,
+    "yillikBrutOran": 0.39,
     "not": ""
   },
   {
@@ -712,7 +768,7 @@
     "altLimit": 7500000,
     "ustLimit": 9999999,
     "vadesizdeKalacak": 900000,
-    "yillikBrutOran": 0.4,
+    "yillikBrutOran": 0.39,
     "not": ""
   },
   {
@@ -720,7 +776,7 @@
     "altLimit": 10000000,
     "ustLimit": 14999999,
     "vadesizdeKalacak": 1250000,
-    "yillikBrutOran": 0.4,
+    "yillikBrutOran": 0.39,
     "not": ""
   },
   {
@@ -728,7 +784,7 @@
     "altLimit": 15000000,
     "ustLimit": 24999999,
     "vadesizdeKalacak": 2000000,
-    "yillikBrutOran": 0.4,
+    "yillikBrutOran": 0.39,
     "not": ""
   },
   {
@@ -736,7 +792,7 @@
     "altLimit": 25000000,
     "ustLimit": 34999999,
     "vadesizdeKalacak": 3000000,
-    "yillikBrutOran": 0.4,
+    "yillikBrutOran": 0.39,
     "not": ""
   },
   {
