@@ -4,7 +4,7 @@
     "altLimit": 0,
     "ustLimit": 49999.99,
     "vadesizdeKalacak": 7500,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
@@ -12,7 +12,7 @@
     "altLimit": 50000,
     "ustLimit": 249999.99,
     "vadesizdeKalacak": 35000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
@@ -20,7 +20,7 @@
     "altLimit": 250000,
     "ustLimit": 499999.99,
     "vadesizdeKalacak": 50000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
@@ -28,7 +28,7 @@
     "altLimit": 500000,
     "ustLimit": 1249999.99,
     "vadesizdeKalacak": 200000,
-    "yillikBrutOran": 0.48,
+    "yillikBrutOran": 0.475,
     "not": ""
   },
   {
@@ -140,7 +140,7 @@
     "altLimit": 1000000,
     "ustLimit": 1999999,
     "vadesizdeKalacak": 150000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.4125,
     "not": ""
   },
   {
@@ -188,7 +188,7 @@
     "altLimit": 10000000,
     "ustLimit": 19999999,
     "vadesizdeKalacak": 1250000,
-    "yillikBrutOran": 0.2775,
+    "yillikBrutOran": 0.28,
     "not": ""
   },
   {
@@ -196,7 +196,7 @@
     "altLimit": 20000000,
     "ustLimit": 29999999,
     "vadesizdeKalacak": 2000000,
-    "yillikBrutOran": 0.2775,
+    "yillikBrutOran": 0.28,
     "not": ""
   },
   {
@@ -204,7 +204,7 @@
     "altLimit": 30000000,
     "ustLimit": 9999999999,
     "vadesizdeKalacak": 2000000,
-    "yillikBrutOran": 0.255,
+    "yillikBrutOran": 0.2575,
     "not": ""
   },
   {
@@ -219,7 +219,7 @@
     "banka": "Yapı Kredi",
     "altLimit": 50000,
     "ustLimit": 99999,
-    "vadesizdeKalacak": 7500,
+    "vadesizdeKalacak": 10000,
     "yillikBrutOran": 0.415,
     "not": ""
   },
@@ -227,7 +227,7 @@
     "banka": "Yapı Kredi",
     "altLimit": 100000,
     "ustLimit": 249999,
-    "vadesizdeKalacak": 15000,
+    "vadesizdeKalacak": 20000,
     "yillikBrutOran": 0.415,
     "not": ""
   },
@@ -235,7 +235,7 @@
     "banka": "Yapı Kredi",
     "altLimit": 250000,
     "ustLimit": 499999,
-    "vadesizdeKalacak": 30000,
+    "vadesizdeKalacak": 40000,
     "yillikBrutOran": 0.415,
     "not": ""
   },
@@ -243,7 +243,7 @@
     "banka": "Yapı Kredi",
     "altLimit": 500000,
     "ustLimit": 999999,
-    "vadesizdeKalacak": 60000,
+    "vadesizdeKalacak": 75000,
     "yillikBrutOran": 0.415,
     "not": ""
   },
@@ -251,7 +251,7 @@
     "banka": "Yapı Kredi",
     "altLimit": 1000000,
     "ustLimit": 1999999,
-    "vadesizdeKalacak": 120000,
+    "vadesizdeKalacak": 150000,
     "yillikBrutOran": 0.415,
     "not": ""
   },
@@ -259,7 +259,7 @@
     "banka": "Yapı Kredi",
     "altLimit": 2000000,
     "ustLimit": 2999999,
-    "vadesizdeKalacak": 200000,
+    "vadesizdeKalacak": 250000,
     "yillikBrutOran": 0.415,
     "not": ""
   },
@@ -267,7 +267,7 @@
     "banka": "Yapı Kredi",
     "altLimit": 3000000,
     "ustLimit": 4999999,
-    "vadesizdeKalacak": 300000,
+    "vadesizdeKalacak": 400000,
     "yillikBrutOran": 0.415,
     "not": ""
   },
@@ -275,7 +275,7 @@
     "banka": "Yapı Kredi",
     "altLimit": 5000000,
     "ustLimit": 10000000,
-    "vadesizdeKalacak": 500000,
+    "vadesizdeKalacak": 700000,
     "yillikBrutOran": 0.415,
     "not": ""
   },
@@ -284,7 +284,7 @@
     "altLimit": 10000,
     "ustLimit": 24999,
     "vadesizdeKalacak": 5000,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -292,7 +292,7 @@
     "altLimit": 25000,
     "ustLimit": 49999,
     "vadesizdeKalacak": 7500,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -300,7 +300,7 @@
     "altLimit": 50000,
     "ustLimit": 99999,
     "vadesizdeKalacak": 10000,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -308,7 +308,7 @@
     "altLimit": 100000,
     "ustLimit": 249999,
     "vadesizdeKalacak": 20000,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -316,7 +316,7 @@
     "altLimit": 250000,
     "ustLimit": 499999,
     "vadesizdeKalacak": 40000,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -324,7 +324,7 @@
     "altLimit": 500000,
     "ustLimit": 999999,
     "vadesizdeKalacak": 65000,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -332,7 +332,7 @@
     "altLimit": 1000000,
     "ustLimit": 1999999,
     "vadesizdeKalacak": 175000,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -340,7 +340,7 @@
     "altLimit": 2000000,
     "ustLimit": 2999999,
     "vadesizdeKalacak": 300000,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -348,7 +348,7 @@
     "altLimit": 3000000,
     "ustLimit": 3999999,
     "vadesizdeKalacak": 400000,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -356,7 +356,7 @@
     "altLimit": 4000000,
     "ustLimit": 4999999,
     "vadesizdeKalacak": 500000,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -364,7 +364,7 @@
     "altLimit": 5000000,
     "ustLimit": 7499999,
     "vadesizdeKalacak": 750000,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -372,7 +372,7 @@
     "altLimit": 7500000,
     "ustLimit": 10000000,
     "vadesizdeKalacak": 1000000,
-    "yillikBrutOran": 0.43,
+    "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
   },
   {
@@ -380,108 +380,108 @@
     "altLimit": 10000,
     "ustLimit": 24999,
     "vadesizdeKalacak": 5000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 5000,
-    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 25000,
     "ustLimit": 49999,
     "vadesizdeKalacak": 7500,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 10000,
-    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 50000,
     "ustLimit": 99999,
     "vadesizdeKalacak": 10000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 20000,
-    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 100000,
     "ustLimit": 249999,
     "vadesizdeKalacak": 20000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 50000,
-    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 250000,
     "ustLimit": 499999,
     "vadesizdeKalacak": 40000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 100000,
-    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 500000,
     "ustLimit": 999999,
     "vadesizdeKalacak": 65000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 200000,
-    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 1000000,
     "ustLimit": 1999999,
     "vadesizdeKalacak": 175000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 400000,
-    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 2000000,
     "ustLimit": 2999999,
     "vadesizdeKalacak": 300000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 600000,
-    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 3000000,
     "ustLimit": 3999999,
     "vadesizdeKalacak": 400000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 800000,
-    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 4000000,
     "ustLimit": 4999999,
     "vadesizdeKalacak": 500000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 1000000,
-    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 5000000,
     "ustLimit": 7499999,
     "vadesizdeKalacak": 750000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 1250000,
-    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 7500000,
     "ustLimit": 10000000,
     "vadesizdeKalacak": 1000000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 1500000,
-    "not": "%45 oran, %43 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
   },
   {
     "banka": "Alternatifbank",
@@ -808,7 +808,7 @@
     "altLimit": 0,
     "ustLimit": 25000,
     "vadesizdeKalacak": 7500,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir."
   },
   {
@@ -816,7 +816,7 @@
     "altLimit": 25001,
     "ustLimit": 50000,
     "vadesizdeKalacak": 7500,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir."
   },
   {
@@ -824,7 +824,7 @@
     "altLimit": 50001,
     "ustLimit": 100000,
     "vadesizdeKalacak": 10000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir."
   },
   {
@@ -832,7 +832,7 @@
     "altLimit": 100001,
     "ustLimit": 250000,
     "vadesizdeKalacak": 20000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir."
   },
   {
@@ -840,7 +840,7 @@
     "altLimit": 250001,
     "ustLimit": 500000,
     "vadesizdeKalacak": 40000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir."
   },
   {
@@ -848,7 +848,7 @@
     "altLimit": 500001,
     "ustLimit": 750000,
     "vadesizdeKalacak": 75000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir."
   },
   {
@@ -856,7 +856,7 @@
     "altLimit": 750001,
     "ustLimit": 1000000,
     "vadesizdeKalacak": 125000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir."
   },
   {
@@ -864,7 +864,7 @@
     "altLimit": 1000001,
     "ustLimit": 2000000,
     "vadesizdeKalacak": 200000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir."
   },
   {
@@ -872,7 +872,7 @@
     "altLimit": 2000001,
     "ustLimit": 3000000,
     "vadesizdeKalacak": 350000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir."
   },
   {
@@ -880,7 +880,7 @@
     "altLimit": 3000001,
     "ustLimit": 4000000,
     "vadesizdeKalacak": 450000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir."
   },
   {
@@ -888,7 +888,7 @@
     "altLimit": 4000001,
     "ustLimit": 5000000,
     "vadesizdeKalacak": 600000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir."
   },
   {
@@ -896,7 +896,7 @@
     "altLimit": 5000001,
     "ustLimit": 6000000,
     "vadesizdeKalacak": 750000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir."
   },
   {
@@ -904,7 +904,7 @@
     "altLimit": 6000001,
     "ustLimit": 7000000,
     "vadesizdeKalacak": 900000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir."
   },
   {
@@ -912,7 +912,7 @@
     "altLimit": 7000001,
     "ustLimit": 10000000,
     "vadesizdeKalacak": 1000000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir."
   },
   {
@@ -920,7 +920,7 @@
     "altLimit": 10000001,
     "ustLimit": 20000000,
     "vadesizdeKalacak": 1500000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir."
   },
   {
@@ -936,7 +936,7 @@
     "altLimit": 0,
     "ustLimit": 25000,
     "vadesizdeKalacak": 7500,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
@@ -944,7 +944,7 @@
     "altLimit": 25001,
     "ustLimit": 50000,
     "vadesizdeKalacak": 7500,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
@@ -952,7 +952,7 @@
     "altLimit": 50001,
     "ustLimit": 100000,
     "vadesizdeKalacak": 10000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
@@ -960,7 +960,7 @@
     "altLimit": 100001,
     "ustLimit": 250000,
     "vadesizdeKalacak": 20000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
@@ -968,7 +968,7 @@
     "altLimit": 250001,
     "ustLimit": 500000,
     "vadesizdeKalacak": 40000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
@@ -976,7 +976,7 @@
     "altLimit": 500001,
     "ustLimit": 750000,
     "vadesizdeKalacak": 75000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
@@ -984,7 +984,7 @@
     "altLimit": 750001,
     "ustLimit": 1000000,
     "vadesizdeKalacak": 125000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
@@ -992,7 +992,7 @@
     "altLimit": 1000001,
     "ustLimit": 2000000,
     "vadesizdeKalacak": 200000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
@@ -1000,7 +1000,7 @@
     "altLimit": 2000001,
     "ustLimit": 3000000,
     "vadesizdeKalacak": 350000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
@@ -1008,7 +1008,7 @@
     "altLimit": 3000001,
     "ustLimit": 4000000,
     "vadesizdeKalacak": 450000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
@@ -1016,7 +1016,7 @@
     "altLimit": 4000001,
     "ustLimit": 5000000,
     "vadesizdeKalacak": 600000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
@@ -1024,7 +1024,7 @@
     "altLimit": 5000001,
     "ustLimit": 6000000,
     "vadesizdeKalacak": 750000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
@@ -1032,7 +1032,7 @@
     "altLimit": 6000001,
     "ustLimit": 7000000,
     "vadesizdeKalacak": 900000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
@@ -1040,7 +1040,7 @@
     "altLimit": 7000001,
     "ustLimit": 10000000,
     "vadesizdeKalacak": 1000000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
@@ -1048,7 +1048,7 @@
     "altLimit": 10000001,
     "ustLimit": 20000000,
     "vadesizdeKalacak": 1500000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
