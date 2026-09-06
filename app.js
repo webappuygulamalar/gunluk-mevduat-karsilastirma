@@ -4,6 +4,22 @@ const NET_KATSAYI = 1 - STOPAJ_ORANI; // 0.825
 const YIL_GUN = 365;
 const MAX_GUN_SAYISI = 3650;
 
+// Supabase'deki onaylı oranları okumak için kullanılır. Burada YALNIZCA
+// proje URL'si ve anon/publishable key vardır — bunlar tarayıcıda çalışması
+// için tasarlanmış, gizli olmayan değerlerdir. Erişim kontrolü Supabase RLS
+// politikaları tarafından sağlanır (yalnızca is_active/is_enabled=true olan
+// satırlar okunabilir). service_role anahtarı veya veritabanı şifresi bu
+// dosyada YOKTUR ve olmamalıdır.
+const SUPABASE_URL = "https://zlvezpwheycdvzsszrqu.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_u3slgRop1E6jLLJVSprLnA_RZPkgy-g";
+
+// supabase-js CDN betiği yüklenemezse (ör. tamamen çevrimdışıysa) global
+// `supabase` tanımsız kalır; bu durumda doğrudan yerel JSON yedeğine geçilir.
+const supabaseClient =
+  typeof supabase !== "undefined"
+    ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
 const principalInput = document.getElementById("principal");
 const inputError = document.getElementById("input-error");
 const gunSayisiInput = document.getElementById("gun-sayisi");
@@ -85,12 +101,83 @@ function formatWholeTL(value) {
   return `${value.toLocaleString("tr-TR", { maximumFractionDigits: 0 })} TL`;
 }
 
-async function loadBankData() {
+// Supabase'deki bank_rates/banks satırlarını, mevcut data/banks.json
+// formatına (banka, altLimit, ustLimit, vadesizdeKalacak, yillikBrutOran,
+// not, gerekliFonBakiyesi) eksiksiz dönüştürür. Yalnızca aktif banka +
+// aktif oran bandı satırları istenir (RLS zaten aynı kısıtı uyguluyor,
+// burada ayrıca açıkça istenir).
+async function fetchActiveRatesFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("bank_rates")
+    .select(
+      "alt_limit, ust_limit, vadesizde_kalacak, yillik_brut_oran, note, gerekli_fon_bakiyesi, banks!inner(name, is_enabled)"
+    )
+    .eq("is_active", true)
+    .eq("banks.is_enabled", true);
+
+  if (error) {
+    throw new Error(`Supabase sorgusu başarısız: ${error.message}`);
+  }
+  if (!Array.isArray(data) || data.length === 0) {
+    throw new Error("Supabase'ten boş veya geçersiz veri döndü.");
+  }
+
+  const transformed = data.map((row) => {
+    const entry = {
+      banka: row.banks ? row.banks.name : "",
+      altLimit: Number(row.alt_limit),
+      ustLimit: Number(row.ust_limit),
+      vadesizdeKalacak: Number(row.vadesizde_kalacak),
+      yillikBrutOran: Number(row.yillik_brut_oran),
+      not: row.note || "",
+    };
+    if (row.gerekli_fon_bakiyesi !== null && row.gerekli_fon_bakiyesi !== undefined) {
+      entry.gerekliFonBakiyesi = Number(row.gerekli_fon_bakiyesi);
+    }
+    return entry;
+  });
+
+  const isValid = transformed.every(
+    (entry) =>
+      entry.banka &&
+      Number.isFinite(entry.altLimit) &&
+      Number.isFinite(entry.ustLimit) &&
+      Number.isFinite(entry.vadesizdeKalacak) &&
+      Number.isFinite(entry.yillikBrutOran)
+  );
+  if (!isValid) {
+    throw new Error("Supabase verisinde geçersiz veya eksik sayısal alan(lar) var.");
+  }
+
+  return transformed;
+}
+
+async function fetchBankDataFromLocalJson() {
   const response = await fetch("data/banks.json", { cache: "no-store" });
   if (!response.ok) {
     throw new Error(`Banka verisi yüklenemedi (${response.status})`);
   }
   return response.json();
+}
+
+// Önce Supabase'deki onaylı/aktif oranlar denenir (her açılışta ağdan
+// güncel okunur). Supabase'e erişilemezse, ağ hatası oluşursa ya da gelen
+// veri geçersiz/boşsa, kullanıcıya hata göstermeden yerel data/banks.json
+// yedeğine sessizce geçilir — yalnızca konsola bir uyarı yazılır.
+async function loadBankData() {
+  if (supabaseClient) {
+    try {
+      return await fetchActiveRatesFromSupabase();
+    } catch (err) {
+      console.warn(
+        "Supabase'ten oran verisi alınamadı, yerel data/banks.json yedeğine geçiliyor:",
+        err
+      );
+    }
+  } else {
+    console.warn("Supabase istemcisi kullanılamıyor, yerel data/banks.json yedeğine geçiliyor.");
+  }
+  return fetchBankDataFromLocalJson();
 }
 
 function findBandForBank(entries, principal) {

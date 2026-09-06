@@ -1,4 +1,4 @@
-const CACHE_NAME = "gunluk-mevduat-v10";
+const CACHE_NAME = "gunluk-mevduat-v11";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -48,6 +48,14 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
   const url = new URL(event.request.url);
+
+  // Supabase istekleri bu service worker tarafından hiç ele alınmaz: her
+  // zaman doğrudan tarayıcı/ağa gider ve önbelleğe alınmaz. Böylece onaylı
+  // oranlar her açılışta güncel okunur; bir ağ hatası da normal şekilde
+  // reddedilip app.js'in kendi data/banks.json yedeğine düşmesini sağlar
+  // (burada eski bir Supabase yanıtıyla sessizce maskelenmez).
+  if (url.hostname.endsWith(".supabase.co")) return;
+
   const isBankData = url.pathname.endsWith("/data/banks.json");
 
   // Her açılışta önce ağdan güncel veri denenir; internet yoksa önbellekteki
