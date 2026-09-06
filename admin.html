@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Günlük Mevduat — Yönetim Paneli</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+
+  <!-- Giriş ekranı -->
+  <section id="login-view" class="view">
+    <form id="login-form" class="card login-card" autocomplete="on">
+      <h1>Yönetim Paneli</h1>
+      <p class="muted">Sadece admin rolündeki kullanıcılar giriş yapabilir.</p>
+
+      <label for="login-email">E-posta</label>
+      <input type="email" id="login-email" name="email" autocomplete="username" required />
+
+      <label for="login-password">Şifre</label>
+      <input type="password" id="login-password" name="password" autocomplete="current-password" required />
+
+      <button type="submit" id="login-submit">Giriş Yap</button>
+      <p class="muted"><a href="reset-password.html">Şifremi unuttum</a></p>
+      <p id="login-error" class="error-text" hidden></p>
+    </form>
+  </section>
+
+  <!-- Yetkisiz kullanıcı ekranı -->
+  <section id="denied-view" class="view" hidden>
+    <div class="card">
+      <h1>Erişim Reddedildi</h1>
+      <p id="denied-message" class="error-text"></p>
+      <p class="muted">Bu ekranı yalnızca <code>public.profiles.role = 'admin'</code> olan kullanıcılar görebilir.</p>
+      <button id="denied-logout">Çıkış Yap</button>
+    </div>
+  </section>
+
+  <!-- Admin paneli -->
+  <section id="admin-view" class="view" hidden>
+    <header class="topbar">
+      <div>
+        <h1>Günlük Mevduat — Yönetim Paneli</h1>
+        <p class="muted" id="whoami"></p>
+      </div>
+      <button id="logout-btn" class="secondary">Çıkış Yap</button>
+    </header>
+
+    <div id="toast" class="toast" hidden></div>
+
+    <!-- Aktif oranlar -->
+    <section class="card">
+      <h2>Ürünler ve Aktif Oran Aralıkları</h2>
+      <p class="muted">Bu tablo doğrudan düzenlenemez. Bir satır için değişiklik önerdiğinizde, kayıt önce "onay bekliyor" durumunda <code>rate_change_requests</code> tablosuna eklenir.</p>
+      <div class="table-wrap">
+        <table id="rates-table">
+          <thead>
+            <tr>
+              <th>Banka / Ürün</th>
+              <th>Alt Limit</th>
+              <th>Üst Limit</th>
+              <th>Vadesizde Kalacak</th>
+              <th>Yıllık Brüt Oran</th>
+              <th>Gerekli Fon</th>
+              <th>Not</th>
+              <th>İşlem</th>
+            </tr>
+          </thead>
+          <tbody id="rates-tbody">
+            <tr><td colspan="8" class="muted">Yükleniyor…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Öneri formu -->
+    <section id="proposal-card" class="card" hidden>
+      <h2 id="proposal-title">Değişiklik Öner</h2>
+      <form id="proposal-form">
+        <div class="form-grid">
+          <label>Alt Limit
+            <input type="number" step="0.01" id="p-alt-limit" required />
+          </label>
+          <label>Üst Limit
+            <input type="number" step="0.01" id="p-ust-limit" required />
+          </label>
+          <label>Vadesizde Kalacak
+            <input type="number" step="0.01" id="p-vadesiz" required />
+          </label>
+          <label>Yıllık Brüt Oran (ör. 0.43)
+            <input type="number" step="0.0001" id="p-oran" required />
+          </label>
+          <label>Gerekli Fon Bakiyesi (opsiyonel)
+            <input type="number" step="0.01" id="p-fon" />
+          </label>
+          <label class="span-2">Not
+            <input type="text" id="p-not" />
+          </label>
+        </div>
+        <div class="button-row">
+          <button type="submit" id="proposal-submit">Onaya Gönder</button>
+          <button type="button" id="proposal-cancel" class="secondary">İptal</button>
+        </div>
+        <p id="proposal-error" class="error-text" hidden></p>
+      </form>
+    </section>
+
+    <!-- Değişiklik talepleri -->
+    <section class="card">
+      <h2>Değişiklik Talepleri</h2>
+      <p class="muted">Onay bekleyen talepler <code>approve_rate_change</code> / <code>reject_rate_change</code> RPC'leri üzerinden karara bağlanır; bu ekrandan hiçbir satır doğrudan <code>bank_rates</code> tablosuna yazmaz.</p>
+      <div class="table-wrap">
+        <table id="requests-table">
+          <thead>
+            <tr>
+              <th>Banka</th>
+              <th>Tür</th>
+              <th>Durum</th>
+              <th>Önerilen Değerler</th>
+              <th>Talep Tarihi</th>
+              <th>İnceleme Notu</th>
+              <th>İşlem</th>
+            </tr>
+          </thead>
+          <tbody id="requests-tbody">
+            <tr><td colspan="7" class="muted">Yükleniyor…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Audit log -->
+    <section class="card">
+      <h2>Son İşlemler (Audit Log)</h2>
+      <div class="table-wrap">
+        <table id="audit-table">
+          <thead>
+            <tr>
+              <th>Zaman</th>
+              <th>İşlem</th>
+              <th>Tablo</th>
+              <th>Detay</th>
+            </tr>
+          </thead>
+          <tbody id="audit-tbody">
+            <tr><td colspan="4" class="muted">Yükleniyor…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+
+  <!-- Ürün notu detay penceresi -->
+  <dialog id="note-dialog" class="note-dialog">
+    <h2>Ürün Notu</h2>
+    <p id="note-dialog-text"></p>
+    <button type="button" id="note-dialog-close" class="secondary">Kapat</button>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/dist/umd/supabase.min.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
