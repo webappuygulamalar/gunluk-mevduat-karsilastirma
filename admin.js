@@ -637,6 +637,26 @@ function renderRawEvidence(raw) {
   return `<details class="raw-evidence-box"><summary>Ham kaynak değerini göster</summary><dl>${dl}</dl></details>`;
 }
 
+// "En yüksek resmi aday oranı" politikası denetim izi: kaynak tablo, o
+// satırdaki TÜM aday oranlar ve hangisinin/hangi koşulla seçildiği.
+function renderRateSelection(f) {
+  if (!f.selected_rate_column && !f.observed_rate_candidates && !f.source_table_name) return "";
+  const parts = [];
+  if (f.source_table_name) parts.push(`<dt>Kaynak tablo</dt><dd>${escapeHtml(f.source_table_name)}</dd>`);
+  if (f.observed_rate_candidates && f.observed_rate_candidates.length > 0) {
+    const candidatesHtml = f.observed_rate_candidates
+      .map((c) => {
+        const isWinner = c.column === f.selected_rate_column;
+        return `<div${isWinner ? ' class="diff-new"' : ""}>${escapeHtml(c.column)}: ${fmtPercent(c.rate)}${isWinner ? " ← seçildi" : ""}</div>`;
+      })
+      .join("");
+    parts.push(`<dt>Tüm aday oranlar</dt><dd>${candidatesHtml}</dd>`);
+  }
+  if (f.selected_rate_condition) parts.push(`<dt>Seçilen oranın koşulu</dt><dd>${escapeHtml(f.selected_rate_condition)}</dd>`);
+  if (parts.length === 0) return "";
+  return `<dl class="proposal-fields" style="margin-top:8px;">${parts.join("")}</dl>`;
+}
+
 async function loadDailyCheck() {
   dailyCheckTbody.innerHTML = `<tr><td colspan="6" class="muted">Yükleniyor…</td></tr>`;
 
@@ -648,11 +668,15 @@ async function loadDailyCheck() {
     .limit(1)
     .maybeSingle();
 
+  // banks!inner + is_enabled=true: pasifleştirilmiş ürünler (ör. kullanıcı
+  // kararıyla kapatılan mükerrer Odeabank ürünü) günlük kontrol panelinde
+  // hiç görünmesin — Edge Function da aynı filtreyle bu kaynakları atlıyor.
   const { data: sources, error: sourcesErr } = await client
     .from("bank_sources")
     .select(
-      "id, bank_id, source_url, requires_manual_check, last_checked_at, last_check_status, banks(name)"
+      "id, bank_id, source_url, requires_manual_check, last_checked_at, last_check_status, banks!inner(name, is_enabled)"
     )
+    .eq("banks.is_enabled", true)
     .order("created_at", { ascending: true });
 
   if (sourcesErr || !sources) {
@@ -685,7 +709,7 @@ async function loadDailyCheck() {
     const { data: findingsData } = await client
       .from("rate_check_findings")
       .select(
-        "id, bank_source_id, bank_id, finding_type, current_value, observed_value, evidence_url, detail, fingerprint, raw_evidence, rate_change_request_id, rate_change_requests(id, status)"
+        "id, bank_source_id, bank_id, finding_type, current_value, observed_value, evidence_url, detail, fingerprint, raw_evidence, source_table_name, selected_rate_column, selected_rate_condition, observed_rate_candidates, rate_change_request_id, rate_change_requests(id, status)"
       )
       .eq("run_id", lastRun.id);
     findings = findingsData || [];
@@ -758,6 +782,7 @@ async function loadDailyCheck() {
             <div><span class="muted">Kayıtlı (normalize edilmiş):</span> <span class="diff-old">${escapeHtml(fmtBandShort(f.current_value))}</span></div>
             <div><span class="muted">Kaynakta bulunan (normalize edilmiş):</span> <span class="diff-new">${escapeHtml(fmtBandShort(f.observed_value))}</span></div>
           </div>
+          ${renderRateSelection(f)}
           ${renderRawEvidence(f.raw_evidence)}`;
         let actions = "—";
         if (reqStatus === "pending" && f.rate_change_request_id) {
@@ -787,6 +812,7 @@ async function loadDailyCheck() {
                   <div><span class="muted">Kayıtlı (normalize edilmiş):</span> ${escapeHtml(fmtBandShort(f.current_value))}</div>
                   <div><span class="muted">Kaynakta bulunan (kabul edilmiş fark):</span> ${escapeHtml(fmtBandShort(f.observed_value))}</div>
                 </div>
+                ${renderRateSelection(f)}
                 ${renderRawEvidence(f.raw_evidence)}
               </div>`
           )
@@ -812,7 +838,7 @@ async function loadDailyCheck() {
       <td>${fmtDateTime(source.last_checked_at)}</td>
       <td><a href="${escapeHtml(source.source_url)}" target="_blank" rel="noopener">Kaynağı Aç</a></td>
       <td>${currentCell}</td>
-      <td>${foundCell}</td>
+      <td class="daily-check-detail-col">${foundCell}</td>
     `;
     dailyCheckTbody.appendChild(tr);
   }

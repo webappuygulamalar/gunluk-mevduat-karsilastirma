@@ -46,15 +46,15 @@ function parseTRPercent(raw: string): number | null {
   return n / 100;
 }
 
-/** "7.500" veya "7.500 TL" veya "7,500" -> 7500 (binlik nokta VEYA virgül olabilir, ondalık yok varsayımı) */
+/** "7.500" veya "7.500 TL" veya "25.000,01" -> 7500 / 25000.01 (TR formatı: "." binlik ayırıcı, "," ondalık ayırıcı). */
 function parseTRMoney(raw: string): number | null {
   const cleaned = raw.replace(/TL/gi, "").replace(/\s/g, "").trim();
   if (!cleaned) return null;
-  // Hem "7.500" (TR binlik nokta) hem "7,500" (bazı sayfalarda EN tarzı binlik virgül)
-  // formatlarını destekle: son 3'lü grup ayırıcılarını kaldır, ondalık nokta/virgül yok say
-  // (bu sayfalardaki tutarlar zaten tam sayı TL).
-  const digitsOnly = cleaned.replace(/[.,](?=\d{3}(\D|$))/g, "").replace(/[.,]/g, "");
-  const n = Number(digitsOnly);
+  // TR sayı biçimi: binlik ayırıcı HER ZAMAN "." — kaldırılır. Ondalık
+  // ayırıcı "," — ondalık noktasına çevrilir (ör. Odeabank'ın bant
+  // sınırlarında görülen "25.000,01" gibi gerçek kuruş değerleri için).
+  const normalized = cleaned.replace(/\./g, "").replace(",", ".");
+  const n = Number(normalized);
   if (!Number.isFinite(n)) return null;
   return n;
 }
@@ -66,6 +66,11 @@ function textOf(el: Element | null | undefined): string {
 // ---------------------------------------------------------------------------
 // Ortak tipler
 // ---------------------------------------------------------------------------
+
+interface RateCandidate {
+  column: string;
+  rate: number;
+}
 
 interface ParsedBand {
   alt_limit: number;
@@ -79,6 +84,14 @@ interface ParsedBand {
   // Her parser doldurmak zorunda değil (opsiyonel); doldurmayanlar için
   // admin panelinde yalnızca normalize edilmiş değer gösterilir.
   raw?: Record<string, string>;
+  // "En yüksek resmi aday oranı" politikası için denetim izi: aynı satırdaki
+  // TÜM aday oranlar, hangi sütunun/koşulun seçildiği ve hangi kaynak
+  // tablodan okunduğu. Tek adaylı (yalnızca bir sütunlu) ürünlerde
+  // (ör. TOM Bank, Akbank) doldurulmaz.
+  selected_rate_column?: string;
+  selected_rate_condition?: string;
+  observed_rate_candidates?: RateCandidate[];
+  source_table_name?: string;
 }
 
 interface ParseResult {
@@ -145,48 +158,122 @@ function parseTomBank(html: string): ParseResult {
   return { ok: true, bands, rawTierCount: bands.length };
 }
 
-function parseFibabankaFonluKiraz(html: string): ParseResult {
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  if (!doc) return fail("HTML ayrıştırılamadı");
+interface FibaKirazRawRow {
+  alt: number;
+  ust: number;
+  vadesiz: number;
+  vadesizRaw: string;
+  standartOran: number;
+  standartRaw: string;
+  dijitalOran: number;
+  dijitalRaw: string;
+  fonluEk: number;
+  fonluEkRaw: string;
+}
 
-  // "Fonlu Kiraz Ek Faiz Oranı" başlığını içeren ilk tabloyu bul (sayfada
-  // farklı tab/varyantlar için birden çok benzer tablo var; yalnızca bu
-  // başlığı taşıyan tablo Fonlu Kiraz'a ait).
+const FIBA_KIRAZ_TABLE_NAME = "Kiraz Hesap Hoş Geldin Faiz Oranları (2026) — TL";
+const FIBA_KIRAZ_STANDART_COL = "Standart Hoş Geldin Faiz Oranı";
+const FIBA_KIRAZ_DIJITAL_COL = "Görüntülü Bankacılığa ve Dijital Kanallara Özel Hoş Geldin Faiz Oranı";
+
+// Fibabanka Kiraz Hesap'ın hem "Fonlu Kiraz" hem düz "Kiraz Hoş Geldin"
+// ürünleri AYNI tabloyu kullanır (sayfada "Fonlu Kiraz Ek Faiz Oranı"
+// başlığını içeren tablo — bu, "Kiraz Hesap Hoş Geldin Faiz Oranları (2026)"
+// başlığı altındaki TL tablosuyla aynı tablodur). Ham satırları tek yerden
+// çıkarır; iki ürün de kendi formülünü bu ham verilerin üzerine uygular.
+function parseFibaKirazRawRows(html: string): { ok: true; rows: FibaKirazRawRow[] } | { ok: false; error: string } {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  if (!doc) return { ok: false, error: "HTML ayrıştırılamadı" };
+
   const tables = Array.from(doc.querySelectorAll("table"));
   const table = tables.find((t) => textOf(t.querySelector("thead")).includes("Fonlu Kiraz Ek Faiz Oranı"));
-  if (!table) return fail('"Fonlu Kiraz Ek Faiz Oranı" başlıklı tablo bulunamadı — sayfa yapısı değişmiş olabilir');
+  if (!table) return { ok: false, error: '"Fonlu Kiraz Ek Faiz Oranı" başlıklı tablo bulunamadı — sayfa yapısı değişmiş olabilir' };
 
-  const rows = Array.from(table.querySelectorAll("tbody tr"));
-  if (rows.length === 0) return fail("tbody satırı bulunamadı");
+  const trs = Array.from(table.querySelectorAll("tbody tr"));
+  if (trs.length === 0) return { ok: false, error: "tbody satırı bulunamadı" };
 
-  const bands: ParsedBand[] = [];
-  for (const row of rows) {
+  const rows: FibaKirazRawRow[] = [];
+  for (const row of trs) {
     const rangeText = textOf(row.querySelector("th"));
     const tds = Array.from(row.querySelectorAll("td"));
-    if (tds.length < 5) return fail(`Beklenmeyen hücre sayısı: ${tds.length}`);
+    if (tds.length < 5) return { ok: false, error: `Beklenmeyen hücre sayısı: ${tds.length}` };
 
     const rangeMatch = rangeText.match(/^([\d.,]+)\s*-\s*([\d.,]+)/);
-    if (!rangeMatch) return fail(`Tutar aralığı ayrıştırılamadı: "${rangeText}"`);
+    if (!rangeMatch) return { ok: false, error: `Tutar aralığı ayrıştırılamadı: "${rangeText}"` };
     const alt = parseTRMoney(rangeMatch[1]);
     const ust = parseTRMoney(rangeMatch[2]);
 
-    const vadesiz = parseTRMoney(textOf(tds[0]));
-    const dijitalOran = parseTRPercent(textOf(tds[2]));
-    const fonluEk = parseTRPercent(textOf(tds[4]));
+    const vadesizRaw = textOf(tds[0]);
+    const standartRaw = textOf(tds[1]);
+    const dijitalRaw = textOf(tds[2]);
+    const fonluEkRaw = textOf(tds[4]);
+    const vadesiz = parseTRMoney(vadesizRaw);
+    const standartOran = parseTRPercent(standartRaw);
+    const dijitalOran = parseTRPercent(dijitalRaw);
+    const fonluEk = parseTRPercent(fonluEkRaw);
 
-    if (alt === null || ust === null || vadesiz === null || dijitalOran === null || fonluEk === null) {
-      return fail(`Sayısal alan ayrıştırılamadı (satır: "${rangeText}")`);
+    if (alt === null || ust === null || vadesiz === null || standartOran === null || dijitalOran === null || fonluEk === null) {
+      return { ok: false, error: `Sayısal alan ayrıştırılamadı (satır: "${rangeText}")` };
     }
 
-    bands.push({
-      alt_limit: alt,
-      ust_limit: ust,
-      yillik_brut_oran: Math.round((dijitalOran + fonluEk) * 100000) / 100000,
-      vadesizde_kalacak: vadesiz,
+    rows.push({ alt, ust, vadesiz, vadesizRaw, standartOran, standartRaw, dijitalOran, dijitalRaw, fonluEk, fonluEkRaw });
+  }
+
+  return { ok: true, rows };
+}
+
+function parseFibabankaFonluKiraz(html: string): ParseResult {
+  const raw = parseFibaKirazRawRows(html);
+  if (!raw.ok) return fail(raw.error);
+
+  const bands: ParsedBand[] = raw.rows.map((r) => ({
+    alt_limit: r.alt,
+    ust_limit: r.ust,
+    yillik_brut_oran: Math.round((r.dijitalOran + r.fonluEk) * 100000) / 100000,
+    vadesizde_kalacak: r.vadesiz,
+    vadesiz_hesaplama_tipi: "sabit",
+    vadesiz_oran: null,
+    raw: { "Faiz İşletilmeyecek Min. Tutar": r.vadesizRaw, [FIBA_KIRAZ_DIJITAL_COL]: r.dijitalRaw, "Fonlu Kiraz Ek Faiz Oranı": r.fonluEkRaw },
+    selected_rate_column: `${FIBA_KIRAZ_DIJITAL_COL} + Fonlu Kiraz Ek Faiz Oranı`,
+    selected_rate_condition: "Fonlu Kiraz: dijital/görüntülü bankacılık hoş geldin oranı + yeterli Fiba Portföy TL fon bakiyesiyle kazanılan ek faiz.",
+    observed_rate_candidates: [
+      { column: FIBA_KIRAZ_STANDART_COL, rate: r.standartOran },
+      { column: FIBA_KIRAZ_DIJITAL_COL, rate: r.dijitalOran },
+      { column: `${FIBA_KIRAZ_DIJITAL_COL} + Fonlu Kiraz Ek Faiz Oranı`, rate: Math.round((r.dijitalOran + r.fonluEk) * 100000) / 100000 },
+    ],
+    source_table_name: FIBA_KIRAZ_TABLE_NAME,
+  }));
+
+  return { ok: true, bands, rawTierCount: bands.length };
+}
+
+function parseFibabankaKirazHosgeldin(html: string): ParseResult {
+  const raw = parseFibaKirazRawRows(html);
+  if (!raw.ok) return fail(raw.error);
+
+  const bands: ParsedBand[] = raw.rows.map((r) => {
+    const dijitalWins = r.dijitalOran >= r.standartOran;
+    const winningColumn = dijitalWins ? FIBA_KIRAZ_DIJITAL_COL : FIBA_KIRAZ_STANDART_COL;
+    const winningRaw = dijitalWins ? r.dijitalRaw : r.standartRaw;
+    const winningRate = dijitalWins ? r.dijitalOran : r.standartOran;
+    return {
+      alt_limit: r.alt,
+      ust_limit: r.ust,
+      yillik_brut_oran: winningRate,
+      vadesizde_kalacak: r.vadesiz,
       vadesiz_hesaplama_tipi: "sabit",
       vadesiz_oran: null,
-    });
-  }
+      raw: { "Faiz İşletilmeyecek Min. Tutar": r.vadesizRaw, [winningColumn]: winningRaw },
+      selected_rate_column: winningColumn,
+      selected_rate_condition: dijitalWins
+        ? "Yalnızca görüntülü bankacılık/dijital kanallardan açılan Kiraz Hesap için geçerli."
+        : "Standart (kanal koşulu olmayan) Kiraz Hesap Hoş Geldin oranı.",
+      observed_rate_candidates: [
+        { column: FIBA_KIRAZ_STANDART_COL, rate: r.standartOran },
+        { column: FIBA_KIRAZ_DIJITAL_COL, rate: r.dijitalOran },
+      ],
+      source_table_name: FIBA_KIRAZ_TABLE_NAME,
+    };
+  });
 
   return { ok: true, bands, rawTierCount: bands.length };
 }
@@ -276,10 +363,316 @@ function parseAkbankSerbestPlus(html: string): ParseResult {
   return { ok: true, bands, rawTierCount };
 }
 
+// ---------------------------------------------------------------------------
+// Odeabank Oksijen Hesap — yalnızca "Oksijen Hesap* - TL" tablosu (USD/EUR
+// tabloları alınmaz). İki ürün de AYNI tabloyu kullanır; "en yüksek resmi
+// aday oranı" politikası gereği ikisi de "Hoş Geldin Faiz Oranı" ile "Yeni
+// Müşteriye Özel Hoş Geldin Faiz Oranı"ndan yüksek olana karşı karşılaştırılır
+// — bu, aynı öneriyi üretmelerine yol açabilir (kasıtlı, admin'e raporlanır).
+// ---------------------------------------------------------------------------
+
+interface OdeabankRawRow {
+  alt: number;
+  ust: number;
+  vadesiz: number;
+  vadesizRaw: string;
+  hosGeldinOran: number;
+  hosGeldinRaw: string;
+  yeniMusteriOran: number;
+  yeniMusteriRaw: string;
+}
+
+const ODEA_TABLE_NAME = "Oksijen Hesap* - TL";
+const ODEA_HOSGELDIN_COL = "Hoş Geldin Faiz Oranı";
+const ODEA_YENI_MUSTERI_COL = "Yeni Müşteriye Özel Hoş Geldin Faiz Oranı";
+
+function parseOdeabankRawRows(html: string): { ok: true; rows: OdeabankRawRow[] } | { ok: false; error: string } {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  if (!doc) return { ok: false, error: "HTML ayrıştırılamadı" };
+
+  const boxes = Array.from(doc.querySelectorAll(".content-box"));
+  const box = boxes.find((b) => {
+    const heading = textOf(b.querySelector("h2"));
+    return heading.includes("Oksijen Hesap") && heading.includes("TL") && !heading.includes("USD") && !heading.includes("EUR");
+  });
+  if (!box) return { ok: false, error: '"Oksijen Hesap* - TL" başlıklı bölüm bulunamadı — sayfa yapısı değişmiş olabilir' };
+
+  const table = box.querySelector("table");
+  if (!table) return { ok: false, error: '"Oksijen Hesap* - TL" bölümünde tablo bulunamadı' };
+
+  const trs = Array.from(table.querySelectorAll("tbody tr"));
+  if (trs.length === 0) return { ok: false, error: "tbody satırı bulunamadı" };
+
+  const rows: OdeabankRawRow[] = [];
+  for (const row of trs) {
+    const tds = Array.from(row.querySelectorAll("td"));
+    if (tds.length < 4) return { ok: false, error: `Beklenmeyen hücre sayısı: ${tds.length}` };
+
+    const rangeText = textOf(tds[0]);
+    const rangeMatch = rangeText.match(/^([\d.,]+)\s*-\s*([\d.,]+)$/);
+    if (!rangeMatch) return { ok: false, error: `Tutar aralığı ayrıştırılamadı: "${rangeText}"` };
+    const alt = parseTRMoney(rangeMatch[1]);
+    const ust = parseTRMoney(rangeMatch[2]);
+
+    const vadesizRaw = textOf(tds[1]);
+    const hosGeldinRaw = textOf(tds[2]);
+    const yeniMusteriRaw = textOf(tds[3]);
+    const vadesiz = parseTRMoney(vadesizRaw);
+    const hosGeldinOran = parseTRPercent(hosGeldinRaw);
+    const yeniMusteriOran = parseTRPercent(yeniMusteriRaw);
+
+    if (alt === null || ust === null || vadesiz === null || hosGeldinOran === null || yeniMusteriOran === null) {
+      return { ok: false, error: `Sayısal alan ayrıştırılamadı (satır: "${rangeText}")` };
+    }
+
+    rows.push({ alt, ust, vadesiz, vadesizRaw, hosGeldinOran, hosGeldinRaw, yeniMusteriOran, yeniMusteriRaw });
+  }
+
+  return { ok: true, rows };
+}
+
+// "Odeabank Oksijen Hoş Geldin" kullanıcı kararıyla pasifleştirildi (bkz.
+// 20260910100000 migration) — is_enabled=false olduğu için bank_sources
+// sorgusu bu kaynağı zaten atlıyor, ama PARSERS eşlemesi kasıtlı olarak
+// duruyor (ileride yeniden etkinleştirilirse anında çalışsın diye).
+//
+// Kalan tek ürün "Odeabank Yeni Müşteriye Özel Oksijen" — tanımı gereği
+// yalnızca İLK KEZ Odeabank müşterisi olanlar için geçerli bir üründür; bu
+// koşul, o satırda sayısal olarak hangi sütun (Hoş Geldin mi Yeni Müşteriye
+// Özel mi) daha yüksek çıkarsa çıksın SABİTTİR — ürünün eligibility'si,
+// "en yüksek aday oranı seç" karşılaştırma politikasından bağımsızdır.
+function parseOdeabankYeniMusteriOksijen(html: string): ParseResult {
+  const raw = parseOdeabankRawRows(html);
+  if (!raw.ok) return fail(raw.error);
+
+  const bands: ParsedBand[] = raw.rows.map((r) => {
+    const yeniMusteriWins = r.yeniMusteriOran >= r.hosGeldinOran;
+    const winningColumn = yeniMusteriWins ? ODEA_YENI_MUSTERI_COL : ODEA_HOSGELDIN_COL;
+    const winningRaw = yeniMusteriWins ? r.yeniMusteriRaw : r.hosGeldinRaw;
+    const winningRate = yeniMusteriWins ? r.yeniMusteriOran : r.hosGeldinOran;
+    return {
+      alt_limit: r.alt,
+      ust_limit: r.ust,
+      yillik_brut_oran: winningRate,
+      vadesizde_kalacak: r.vadesiz,
+      vadesiz_hesaplama_tipi: "sabit",
+      vadesiz_oran: null,
+      raw: { "Vadesiz Alt Limit": r.vadesizRaw, [winningColumn]: winningRaw },
+      selected_rate_column: winningColumn,
+      selected_rate_condition: "Yalnızca ilk kez Odeabank müşterisi olanlar için geçerli.",
+      observed_rate_candidates: [
+        { column: ODEA_HOSGELDIN_COL, rate: r.hosGeldinOran },
+        { column: ODEA_YENI_MUSTERI_COL, rate: r.yeniMusteriOran },
+      ],
+      source_table_name: ODEA_TABLE_NAME,
+    };
+  });
+
+  return { ok: true, bands, rawTierCount: bands.length };
+}
+
+// ---------------------------------------------------------------------------
+// Alternatifbank VOV Hesap — yalnızca "VOV Hesap Faiz Tablosu" içindeki TL
+// satırları (Döviz Cinsi=TL). Sayfa üstündeki tek oranlı reklam kutusu ve
+// USD/EUR/XAU satırları kullanılmaz. Tek aday sütun: "Avantajlı Tanışma
+// Faizi" (max seçimi gerekmiyor, "Standart Faiz Oranı" kullanılmıyor).
+// ---------------------------------------------------------------------------
+
+const ALTBANK_TABLE_NAME = "VOV Hesap Faiz Tablosu";
+const ALTBANK_RATE_COL = "Avantajlı Tanışma Faizi";
+
+function parseAlternatifbankVOV(html: string): ParseResult {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  if (!doc) return fail("HTML ayrıştırılamadı");
+
+  const tables = Array.from(doc.querySelectorAll("table"));
+  const table = tables.find((t) => {
+    const text = textOf(t);
+    return text.includes("Döviz Cinsi") && text.includes("Avantajlı Tanışma Faizi") && text.includes("Vadesiz Hesapta Kalan Tutar");
+  });
+  if (!table) return fail('"VOV Hesap Faiz Tablosu" bulunamadı — sayfa yapısı değişmiş olabilir');
+
+  const trs = Array.from(table.querySelectorAll("tbody tr"));
+  if (trs.length === 0) return fail("tbody satırı bulunamadı");
+
+  const bands: ParsedBand[] = [];
+  for (const row of trs) {
+    const tds = Array.from(row.querySelectorAll("td"));
+    if (tds.length < 5) continue; // başlık satırı veya beklenmeyen satır, atla
+
+    const currency = textOf(tds[0]);
+    if (currency !== "TL") continue; // yalnızca TL satırları (USD/EUR/XAU alınmaz)
+
+    const rangeText = textOf(tds[1]);
+    const rangeMatch = rangeText.match(/^([\d.,]+)\s*-\s*(üzeri|[\d.,]+)$/i);
+    if (!rangeMatch) return fail(`Tutar aralığı ayrıştırılamadı: "${rangeText}"`);
+    const alt = parseTRMoney(rangeMatch[1]);
+    const ust = /^üzeri$/i.test(rangeMatch[2]) ? 9999999999 : parseTRMoney(rangeMatch[2]);
+
+    const rateRaw = textOf(tds[2]);
+    const vadesizRaw = textOf(tds[4]);
+    const rate = parseTRPercent(rateRaw);
+    const vadesiz = parseTRMoney(vadesizRaw);
+
+    if (alt === null || ust === null || rate === null || vadesiz === null) {
+      return fail(`Sayısal alan ayrıştırılamadı (satır: "TL ${rangeText}")`);
+    }
+
+    bands.push({
+      alt_limit: alt,
+      ust_limit: ust,
+      yillik_brut_oran: rate,
+      vadesizde_kalacak: vadesiz,
+      vadesiz_hesaplama_tipi: "sabit",
+      vadesiz_oran: null,
+      raw: { "Tutar Aralığı": rangeText, [ALTBANK_RATE_COL]: rateRaw, "Vadesiz Hesapta Kalan Tutar": vadesizRaw },
+      selected_rate_column: ALTBANK_RATE_COL,
+      selected_rate_condition: "45 günlük tanışma dönemi (dönem sonunda ek ürün kullanımıyla süresiz devam edebilir).",
+      observed_rate_candidates: [{ column: ALTBANK_RATE_COL, rate }],
+      source_table_name: ALTBANK_TABLE_NAME,
+    });
+  }
+
+  if (bands.length === 0) return fail("TL satırı bulunamadı");
+  return { ok: true, bands, rawTierCount: bands.length };
+}
+
+// ---------------------------------------------------------------------------
+// ING Turuncu Hesap — SSS bölümündeki "Turuncu Hesap faiz oranları nedir?"
+// TL tablosu. İki ürün AYRI, sabit sütunlardan beslenir (max seçimi YOK,
+// birbirine kopyalanmaz): "ilk defa müşteri kampanyası" -> yalnızca "ING
+// Mobil'den Yeni Müşterilere Özel"; "Hoş geldin" -> yalnızca "Hoş Geldin
+// Faizi".
+// ---------------------------------------------------------------------------
+
+interface IngRawRow {
+  alt: number;
+  ust: number;
+  vadesiz: number;
+  vadesizRaw: string;
+  yeniMusteriOran: number;
+  yeniMusteriRaw: string;
+  hosGeldinOran: number;
+  hosGeldinRaw: string;
+}
+
+const ING_TABLE_NAME = "Turuncu Hesap faiz oranları nedir? — TL";
+const ING_YENI_MUSTERI_COL = "ING Mobil'den Yeni Müşterilere Özel";
+const ING_HOSGELDIN_COL = "Hoş Geldin Faizi";
+
+function parseIngRawRows(html: string): { ok: true; rows: IngRawRow[] } | { ok: false; error: string } {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  if (!doc) return { ok: false, error: "HTML ayrıştırılamadı" };
+
+  const table = doc.querySelector("table.rate-table");
+  if (!table) return { ok: false, error: "table.rate-table bulunamadı — sayfa yapısı değişmiş olabilir" };
+
+  const headerText = textOf(table.querySelector("thead"));
+  if (!headerText.includes("Yeni Müşterilere") || !headerText.includes("Hoş Geldin Faizi")) {
+    return { ok: false, error: `Tablo başlıkları beklenenden farklı: "${headerText}"` };
+  }
+
+  const trs = Array.from(table.querySelectorAll("tbody tr"));
+  if (trs.length === 0) return { ok: false, error: "tbody satırı bulunamadı" };
+
+  const rows: IngRawRow[] = [];
+  for (const row of trs) {
+    const tds = Array.from(row.querySelectorAll("td"));
+    if (tds.length < 4) return { ok: false, error: `Beklenmeyen hücre sayısı: ${tds.length}` };
+
+    const rangeText = textOf(tds[0]);
+    let alt: number | null = null;
+    let ust: number | null = null;
+    const rangeMatch = rangeText.match(/^([\d.,]+)\s*(?:TL)?\s*-\s*([\d.,]+)\s*TL/i);
+    const uzeriMatch = rangeText.match(/^([\d.,]+)\s*TL\s*ve\s*üzeri/i);
+    if (rangeMatch) {
+      alt = parseTRMoney(rangeMatch[1]);
+      ust = parseTRMoney(rangeMatch[2]);
+    } else if (uzeriMatch) {
+      alt = parseTRMoney(uzeriMatch[1]);
+      ust = 9999999999;
+    } else {
+      return { ok: false, error: `Tutar aralığı ayrıştırılamadı: "${rangeText}"` };
+    }
+
+    const vadesizRaw = textOf(tds[1]);
+    const yeniMusteriRaw = textOf(tds[2]);
+    const hosGeldinRaw = textOf(tds[3]);
+    const vadesiz = parseTRMoney(vadesizRaw);
+    const yeniMusteriOran = parseTRPercent(yeniMusteriRaw);
+    const hosGeldinOran = parseTRPercent(hosGeldinRaw);
+
+    if (alt === null || ust === null || vadesiz === null || yeniMusteriOran === null || hosGeldinOran === null) {
+      return { ok: false, error: `Sayısal alan ayrıştırılamadı (satır: "${rangeText}")` };
+    }
+
+    rows.push({ alt, ust, vadesiz, vadesizRaw, yeniMusteriOran, yeniMusteriRaw, hosGeldinOran, hosGeldinRaw });
+  }
+
+  return { ok: true, rows };
+}
+
+function parseIngIlkDefaMusteri(html: string): ParseResult {
+  const raw = parseIngRawRows(html);
+  if (!raw.ok) return fail(raw.error);
+
+  const bands: ParsedBand[] = raw.rows.map((r) => ({
+    alt_limit: r.alt,
+    ust_limit: r.ust,
+    yillik_brut_oran: r.yeniMusteriOran,
+    vadesizde_kalacak: r.vadesiz,
+    vadesiz_hesaplama_tipi: "sabit",
+    vadesiz_oran: null,
+    raw: { "Faiz İşletilmeyecek Tutar": r.vadesizRaw, [ING_YENI_MUSTERI_COL]: r.yeniMusteriRaw },
+    selected_rate_column: ING_YENI_MUSTERI_COL,
+    selected_rate_condition: "Yalnızca ING Mobil üzerinden ilk kez ING müşterisi olanlar için geçerli.",
+    observed_rate_candidates: [
+      { column: ING_YENI_MUSTERI_COL, rate: r.yeniMusteriOran },
+      { column: ING_HOSGELDIN_COL, rate: r.hosGeldinOran },
+    ],
+    source_table_name: ING_TABLE_NAME,
+  }));
+
+  return { ok: true, bands, rawTierCount: bands.length };
+}
+
+function parseIngHosGeldin(html: string): ParseResult {
+  const raw = parseIngRawRows(html);
+  if (!raw.ok) return fail(raw.error);
+
+  const bands: ParsedBand[] = raw.rows.map((r) => ({
+    alt_limit: r.alt,
+    ust_limit: r.ust,
+    yillik_brut_oran: r.hosGeldinOran,
+    vadesizde_kalacak: r.vadesiz,
+    vadesiz_hesaplama_tipi: "sabit",
+    vadesiz_oran: null,
+    raw: { "Faiz İşletilmeyecek Tutar": r.vadesizRaw, [ING_HOSGELDIN_COL]: r.hosGeldinRaw },
+    selected_rate_column: ING_HOSGELDIN_COL,
+    selected_rate_condition: "Genel hoş geldin oranı (ING Mobil'den ilk kez müşteri olma koşulu yok).",
+    observed_rate_candidates: [
+      { column: ING_YENI_MUSTERI_COL, rate: r.yeniMusteriOran },
+      { column: ING_HOSGELDIN_COL, rate: r.hosGeldinOran },
+    ],
+    source_table_name: ING_TABLE_NAME,
+  }));
+
+  return { ok: true, bands, rawTierCount: bands.length };
+}
+
 const PARSERS: Record<string, (html: string) => ParseResult> = {
   "TOM Bank": parseTomBank,
   "Fibabanka Fonlu Kiraz": parseFibabankaFonluKiraz,
+  "Fibabanka Kiraz Hoş Geldin": parseFibabankaKirazHosgeldin,
   "Akbank Serbest Plus Hesap": parseAkbankSerbestPlus,
+  // "Odeabank Oksijen Hoş Geldin" pasif (is_enabled=false) — bank_sources
+  // sorgusu zaten atlıyor, ama eşleme ileride yeniden etkinleştirilirse
+  // hazır olsun diye duruyor.
+  "Odeabank Oksijen Hoş Geldin": parseOdeabankYeniMusteriOksijen,
+  "Odeabank Yeni Müşteriye Özel Oksijen": parseOdeabankYeniMusteriOksijen,
+  "Alternatifbank": parseAlternatifbankVOV,
+  "ING ilk defa müşteri kampanyası": parseIngIlkDefaMusteri,
+  "ING Hoş geldin": parseIngHosGeldin,
 };
 
 // ---------------------------------------------------------------------------
@@ -298,9 +691,24 @@ function validateBands(bands: ParsedBand[], expectedTierCount: number | null, ra
     if (b.yillik_brut_oran < MIN_PLAUSIBLE_RATE || b.yillik_brut_oran > MAX_PLAUSIBLE_RATE) {
       return `Oran makul aralık dışında: ${b.yillik_brut_oran}`;
     }
+    // Birden fazla aday sütunu varsa (ör. Standart/Dijital, Hoş Geldin/Yeni
+    // Müşteri), yalnızca KAZANAN değil TÜM adaylar makul aralıkta olmalı —
+    // aksi halde ayrıştırma sessizce yanlış bir hücreyi okumuş olabilir.
+    if (b.observed_rate_candidates) {
+      for (const c of b.observed_rate_candidates) {
+        if (!Number.isFinite(c.rate) || c.rate < MIN_PLAUSIBLE_RATE || c.rate > MAX_PLAUSIBLE_RATE) {
+          return `Aday oran makul aralık dışında ("${c.column}": ${c.rate})`;
+        }
+      }
+    }
     if (b.vadesiz_hesaplama_tipi === "sabit") {
-      if (b.vadesizde_kalacak > b.alt_limit) {
-        return `Vadesizde kalan tutar (${b.vadesizde_kalacak}) alt limitten (${b.alt_limit}) büyük`;
+      // alt_limit karşılaştırması YANLIŞTI: bir bant meşru olarak 0'dan
+      // başlayabilir (ör. Odeabank'ın ilk bandı [0, 25.000], vadesizde
+      // kalacak 7.500 TL — bankanın kendi resmi, hâlâ yayında olan verisiyle
+      // birebir aynı). Asıl anlamlı sınır: vadesizde kalan tutar, bandın ÜST
+      // sınırını (o bantta olabilecek en yüksek bakiyeyi) aşmamalı.
+      if (b.vadesizde_kalacak > b.ust_limit) {
+        return `Vadesizde kalan tutar (${b.vadesizde_kalacak}) üst limitten (${b.ust_limit}) büyük`;
       }
     } else {
       if (b.vadesiz_oran === null || b.vadesiz_oran < 0 || b.vadesiz_oran >= 100) {
@@ -351,6 +759,7 @@ interface BankSourceRow {
   page_marker_text: string | null;
   expected_tier_count: number | null;
   requires_manual_check: boolean;
+  notes: string | null;
   banks: { name: string } | null;
 }
 
@@ -421,7 +830,13 @@ function toProposedData(b: ParsedBand, note: string, gerekliFonBakiyesi: number 
     ust_limit: b.ust_limit,
     vadesizde_kalacak: b.vadesizde_kalacak,
     yillik_brut_oran: b.yillik_brut_oran,
-    note,
+    // Birden fazla aday sütunu olan ürünlerde (Fibabanka Kiraz Hoş Geldin,
+    // Odeabank, ING) seçilen oranın koşulu HER ZAMAN nota yazılır — hangi
+    // sütun kazandığı değişirse (ör. Standart<->Dijital) not da otomatik
+    // güncellenir. Tek adaylı ürünlerde (TOM Bank, Akbank, Fonlu Kiraz)
+    // selected_rate_condition boş olduğundan mevcut davranış (kayıtlı not)
+    // hiç değişmez.
+    note: b.selected_rate_condition ?? note,
     gerekli_fon_bakiyesi: gerekliFonBakiyesi,
     vadesiz_hesaplama_tipi: b.vadesiz_hesaplama_tipi,
     vadesiz_oran: b.vadesiz_oran,
@@ -443,7 +858,7 @@ async function processSource(
       bank_id: source.bank_id,
       finding_type: "manual_required",
       evidence_url: source.source_url,
-      detail: `${bankName} için güvenilir, otomatik ayrıştırılabilir bir kaynak yok. Lütfen resmi sayfayı elle kontrol edin.`,
+      detail: source.notes || `${bankName} için güvenilir, otomatik ayrıştırılabilir bir kaynak yok. Lütfen resmi sayfayı elle kontrol edin.`,
     });
     await supabase
       .from("bank_sources")
@@ -632,6 +1047,10 @@ async function processSource(
         observed_value: proposedData,
         fingerprint,
         raw_evidence: parsedBand.raw ?? null,
+        source_table_name: parsedBand.source_table_name ?? null,
+        selected_rate_column: parsedBand.selected_rate_column ?? null,
+        selected_rate_condition: parsedBand.selected_rate_condition ?? null,
+        observed_rate_candidates: parsedBand.observed_rate_candidates ?? null,
         detail: dryRun ? "(dry run) Önceden kabul edilmiş, bilinen bir fark." : "Önceden kabul edilmiş, bilinen bir fark — yeni talep açılmadı.",
       });
       findingsCreated++;
@@ -650,6 +1069,10 @@ async function processSource(
         observed_value: proposedData,
         fingerprint,
         raw_evidence: parsedBand.raw ?? null,
+        source_table_name: parsedBand.source_table_name ?? null,
+        selected_rate_column: parsedBand.selected_rate_column ?? null,
+        selected_rate_condition: parsedBand.selected_rate_condition ?? null,
+        observed_rate_candidates: parsedBand.observed_rate_candidates ?? null,
         detail: "(dry run — talep oluşturulmadı)",
       });
       findingsCreated++;
@@ -682,6 +1105,10 @@ async function processSource(
         rate_change_request_id: duplicate.id,
         fingerprint,
         raw_evidence: parsedBand.raw ?? null,
+        source_table_name: parsedBand.source_table_name ?? null,
+        selected_rate_column: parsedBand.selected_rate_column ?? null,
+        selected_rate_condition: parsedBand.selected_rate_condition ?? null,
+        observed_rate_candidates: parsedBand.observed_rate_candidates ?? null,
         detail: "Bu değişiklik için zaten onay bekleyen bir talep var (mükerrer oluşturulmadı).",
       });
       findingsCreated++;
@@ -714,6 +1141,10 @@ async function processSource(
       rate_change_request_id: newRequest?.id ?? null,
       fingerprint,
       raw_evidence: parsedBand.raw ?? null,
+      source_table_name: parsedBand.source_table_name ?? null,
+      selected_rate_column: parsedBand.selected_rate_column ?? null,
+      selected_rate_condition: parsedBand.selected_rate_condition ?? null,
+      observed_rate_candidates: parsedBand.observed_rate_candidates ?? null,
       detail: insertErr ? `Talep oluşturulamadı: ${insertErr.message}` : undefined,
     });
     findingsCreated++;
@@ -801,9 +1232,14 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // banks!inner + is_enabled=true filtresi: pasifleştirilmiş bankalar (ör.
+  // kullanıcı kararıyla mükerrer olduğu için kapatılan Odeabank Oksijen Hoş
+  // Geldin) günlük kontrolde HİÇ görünmez — ne bulgu ne pending talep
+  // üretilir. bank_sources satırı silinmez, yalnızca bu sorgudan elenir.
   const { data: sources, error: sourcesErr } = await supabase
     .from("bank_sources")
-    .select("id, bank_id, source_url, page_marker_text, expected_tier_count, requires_manual_check, banks(name)")
+    .select("id, bank_id, source_url, page_marker_text, expected_tier_count, requires_manual_check, notes, banks!inner(name, is_enabled)")
+    .eq("banks.is_enabled", true)
     .order("created_at", { ascending: true });
 
   if (sourcesErr || !sources) {
