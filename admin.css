@@ -225,3 +225,93 @@ code {
   border-radius: 4px;
   font-size: 0.85em;
 }
+
+/* Günlük Kontrol ve Uyarılar bölümü ------------------------------------- */
+
+.section-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.section-header-row h2 { margin: 0; }
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(110px, 1fr));
+  gap: 10px;
+  margin: 14px 0 18px;
+}
+.stat-tile {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stat-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.stat-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.status-no_change { background: var(--ok-bg); color: var(--ok-text); }
+.status-rate_changed { background: var(--pending-bg); color: var(--pending-text); }
+.status-unreachable,
+.status-parse_error { background: var(--danger-bg); color: var(--danger); }
+.status-manual_required { background: #fff4d6; color: #8a5a00; }
+.status-not_attempted { background: #eef1f6; color: var(--muted); }
+
+.warning-box {
+  background: #fff8e8;
+  border: 1px solid #f0d38a;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  color: #7a5200;
+  margin-top: 4px;
+  max-width: 320px;
+  overflow-wrap: anywhere;
+}
+
+.diff-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.8rem;
+}
+.diff-box .diff-old { color: var(--muted); text-decoration: line-through; }
+.diff-box .diff-new { color: var(--ok-text); font-weight: 600; }
+
+.daily-check-finding {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.daily-check-finding:last-child { border-bottom: none; }
+
+@media (max-width: 720px) {
+  .stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

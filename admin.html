@@ -49,6 +49,43 @@
 
     <div id="toast" class="toast" hidden></div>
 
+    <!-- Günlük Kontrol ve Uyarılar -->
+    <section class="card">
+      <div class="section-header-row">
+        <h2>Günlük Kontrol ve Uyarılar</h2>
+        <button type="button" id="run-check-btn">Şimdi Kontrol Et</button>
+      </div>
+      <p class="muted">Her gece 09:00 (İstanbul saati) otomatik çalışır. Bulunan her değişiklik önce burada onay bekler — hiçbir oran otomatik yayımlanmaz.</p>
+
+      <div id="check-summary-grid" class="stat-grid">
+        <div class="stat-tile"><span class="stat-label">Son kontrol</span><span class="stat-value" id="stat-last-run">—</span></div>
+        <div class="stat-tile"><span class="stat-label">Kontrol edilen</span><span class="stat-value" id="stat-checked">—</span></div>
+        <div class="stat-tile"><span class="stat-label">Değişiklik yok</span><span class="stat-value" id="stat-nochange">—</span></div>
+        <div class="stat-tile"><span class="stat-label">Değişiklik bulundu</span><span class="stat-value" id="stat-changed">—</span></div>
+        <div class="stat-tile"><span class="stat-label">Uyarılar</span><span class="stat-value" id="stat-warnings">—</span></div>
+        <div class="stat-tile"><span class="stat-label">Kaynak hataları</span><span class="stat-value" id="stat-unreachable">—</span></div>
+        <div class="stat-tile"><span class="stat-label">Manuel kontrol gerekli</span><span class="stat-value" id="stat-manual">—</span></div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="daily-check-table">
+          <thead>
+            <tr>
+              <th>Banka / Ürün</th>
+              <th>Durum</th>
+              <th>Son kontrol</th>
+              <th>Kaynak</th>
+              <th>Mevcut oran</th>
+              <th>Bulunan / önerilen (+ işlem)</th>
+            </tr>
+          </thead>
+          <tbody id="daily-check-tbody">
+            <tr><td colspan="6" class="muted">Yükleniyor…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- Aktif oranlar -->
     <section class="card">
       <h2>Ürünler ve Aktif Oran Aralıkları</h2>
@@ -85,8 +122,17 @@
           <label>Üst Limit
             <input type="number" step="0.01" id="p-ust-limit" required />
           </label>
-          <label>Vadesizde Kalacak
+          <label>Vadesizde Kalacak (sabit tipte, TL)
             <input type="number" step="0.01" id="p-vadesiz" required />
+          </label>
+          <label>Vadesiz Hesaplama Tipi
+            <select id="p-vadesiz-tipi">
+              <option value="sabit">Sabit (TL)</option>
+              <option value="yuzde">Yüzde (bakiyenin %'si)</option>
+            </select>
+          </label>
+          <label>Vadesiz Oranı (yüzde tipte, ör. 10)
+            <input type="number" step="0.01" id="p-vadesiz-oran" />
           </label>
           <label>Yıllık Brüt Oran (ör. 0.43)
             <input type="number" step="0.0001" id="p-oran" required />
@@ -156,6 +202,48 @@
     <h2>Ürün Notu</h2>
     <p id="note-dialog-text"></p>
     <button type="button" id="note-dialog-close" class="secondary">Kapat</button>
+  </dialog>
+
+  <!-- Manuel düzeltme (doğrudan yayınla) penceresi -->
+  <dialog id="manual-edit-dialog" class="note-dialog">
+    <h2 id="manual-edit-title">Manuel Düzeltme</h2>
+    <p class="muted">Bu değerler öneri kuyruğunu atlayıp <strong>doğrudan</strong> yayınlanır. Yalnızca resmi kaynağı kendiniz kontrol ettiyseniz kullanın.</p>
+    <form id="manual-edit-form">
+      <div class="form-grid">
+        <label>Alt Limit
+          <input type="number" step="0.01" id="m-alt-limit" required />
+        </label>
+        <label>Üst Limit
+          <input type="number" step="0.01" id="m-ust-limit" required />
+        </label>
+        <label>Vadesizde Kalacak (sabit tipte, TL)
+          <input type="number" step="0.01" id="m-vadesiz" required />
+        </label>
+        <label>Vadesiz Hesaplama Tipi
+          <select id="m-vadesiz-tipi">
+            <option value="sabit">Sabit (TL)</option>
+            <option value="yuzde">Yüzde (bakiyenin %'si)</option>
+          </select>
+        </label>
+        <label>Vadesiz Oranı (yüzde tipte, ör. 10)
+          <input type="number" step="0.01" id="m-vadesiz-oran" />
+        </label>
+        <label>Yıllık Brüt Oran (ör. 0.43)
+          <input type="number" step="0.0001" id="m-oran" required />
+        </label>
+        <label>Gerekli Fon Bakiyesi (opsiyonel)
+          <input type="number" step="0.01" id="m-fon" />
+        </label>
+        <label class="span-2">Not
+          <input type="text" id="m-not" />
+        </label>
+      </div>
+      <div class="button-row">
+        <button type="submit" id="manual-edit-submit">Kaydet ve Yayınla</button>
+        <button type="button" id="manual-edit-cancel" class="secondary">İptal</button>
+      </div>
+      <p id="manual-edit-error" class="error-text" hidden></p>
+    </form>
   </dialog>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/dist/umd/supabase.min.js"></script>

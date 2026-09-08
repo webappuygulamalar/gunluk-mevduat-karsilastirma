@@ -10,6 +10,8 @@ const SUPABASE_ANON_KEY = "sb_publishable_u3slgRop1E6jLLJVSprLnA_RZPkgy-g";
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/check-bank-rates`;
+
 const loginView = document.getElementById("login-view");
 const deniedView = document.getElementById("denied-view");
 const adminView = document.getElementById("admin-view");
@@ -29,9 +31,25 @@ const proposalTitle = document.getElementById("proposal-title");
 const proposalForm = document.getElementById("proposal-form");
 const proposalError = document.getElementById("proposal-error");
 
+const runCheckBtn = document.getElementById("run-check-btn");
+const dailyCheckTbody = document.getElementById("daily-check-tbody");
+const statLastRun = document.getElementById("stat-last-run");
+const statChecked = document.getElementById("stat-checked");
+const statNoChange = document.getElementById("stat-nochange");
+const statChanged = document.getElementById("stat-changed");
+const statWarnings = document.getElementById("stat-warnings");
+const statUnreachable = document.getElementById("stat-unreachable");
+const statManual = document.getElementById("stat-manual");
+
+const manualEditDialog = document.getElementById("manual-edit-dialog");
+const manualEditTitle = document.getElementById("manual-edit-title");
+const manualEditForm = document.getElementById("manual-edit-form");
+const manualEditError = document.getElementById("manual-edit-error");
+
 let currentUser = null;
 let activeRatesById = new Map();
 let proposalContext = null; // { rate, mode: 'update' | 'disable' }
+let manualEditContext = null; // { rate }
 
 const percentFmt = new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 const numberFmt = new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 2 });
@@ -128,7 +146,7 @@ document.getElementById("denied-logout").addEventListener("click", logout);
 // ---------------------------------------------------------------------------
 
 async function loadAll() {
-  await Promise.all([loadActiveRates(), loadRequests(), loadAuditLog()]);
+  await Promise.all([loadActiveRates(), loadRequests(), loadAuditLog(), loadDailyCheck()]);
 }
 
 async function loadActiveRates() {
@@ -136,7 +154,9 @@ async function loadActiveRates() {
 
   const { data, error } = await client
     .from("bank_rates")
-    .select("id, bank_id, alt_limit, ust_limit, vadesizde_kalacak, yillik_brut_oran, note, gerekli_fon_bakiyesi, banks(name)")
+    .select(
+      "id, bank_id, alt_limit, ust_limit, vadesizde_kalacak, yillik_brut_oran, note, gerekli_fon_bakiyesi, vadesiz_hesaplama_tipi, vadesiz_oran, banks(name)"
+    )
     .eq("is_active", true)
     .order("name", { referencedTable: "banks" })
     .order("alt_limit");
@@ -167,6 +187,7 @@ async function loadActiveRates() {
       <td class="actions-cell">
         <button type="button" class="link-btn" data-action="update" data-id="${r.id}">Güncelle Öner</button>
         <button type="button" class="link-btn danger" data-action="disable" data-id="${r.id}">Pasifleştir Öner</button>
+        <button type="button" class="link-btn" data-action="manual-edit" data-id="${r.id}">Kaydet ve Yayınla</button>
       </td>
     `;
     ratesTbody.appendChild(tr);
@@ -184,7 +205,82 @@ ratesTbody.addEventListener("click", (e) => {
     submitDisableProposal(rate);
   } else if (btn.dataset.action === "show-note") {
     openNoteDialog(rate.note);
+  } else if (btn.dataset.action === "manual-edit") {
+    openManualEditDialog(rate);
   }
+});
+
+// ---------------------------------------------------------------------------
+// Manuel düzeltme ("Kaydet ve Yayınla") — öneri kuyruğunu atlayıp
+// admin_update_bank_rate RPC'siyle DOĞRUDAN yayınlar. Tarayıcıdan bank_rates
+// tablosuna hiçbir zaman doğrudan insert/update/delete yapılmaz.
+// ---------------------------------------------------------------------------
+
+function openManualEditDialog(rate) {
+  manualEditContext = { rate };
+  manualEditTitle.textContent = `Manuel Düzeltme — ${rate.banks ? rate.banks.name : rate.bank_id}`;
+  document.getElementById("m-alt-limit").value = rate.alt_limit;
+  document.getElementById("m-ust-limit").value = rate.ust_limit;
+  document.getElementById("m-vadesiz").value = rate.vadesizde_kalacak;
+  document.getElementById("m-vadesiz-tipi").value = rate.vadesiz_hesaplama_tipi || "sabit";
+  document.getElementById("m-vadesiz-oran").value = rate.vadesiz_oran ?? "";
+  document.getElementById("m-oran").value = rate.yillik_brut_oran;
+  document.getElementById("m-fon").value = rate.gerekli_fon_bakiyesi ?? "";
+  document.getElementById("m-not").value = rate.note ?? "";
+  manualEditError.hidden = true;
+  manualEditDialog.showModal();
+}
+
+document.getElementById("manual-edit-cancel").addEventListener("click", () => {
+  manualEditDialog.close();
+  manualEditContext = null;
+});
+
+manualEditForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!manualEditContext) return;
+
+  const vadesizTipi = document.getElementById("m-vadesiz-tipi").value;
+  const vadesizOranRaw = document.getElementById("m-vadesiz-oran").value;
+  const fonRaw = document.getElementById("m-fon").value;
+
+  const params = {
+    p_rate_id: manualEditContext.rate.id,
+    p_alt_limit: Number(document.getElementById("m-alt-limit").value),
+    p_ust_limit: Number(document.getElementById("m-ust-limit").value),
+    p_vadesizde_kalacak: Number(document.getElementById("m-vadesiz").value),
+    p_yillik_brut_oran: Number(document.getElementById("m-oran").value),
+    p_note: document.getElementById("m-not").value,
+    p_gerekli_fon_bakiyesi: fonRaw === "" ? null : Number(fonRaw),
+    p_vadesiz_hesaplama_tipi: vadesizTipi,
+    p_vadesiz_oran: vadesizOranRaw === "" ? null : Number(vadesizOranRaw),
+  };
+
+  if (
+    !confirm(
+      "Bu değerler öneri/onay adımı olmadan DOĞRUDAN yayınlanacak. Resmi kaynağı kendiniz kontrol ettiğinizden emin misiniz?"
+    )
+  ) {
+    return;
+  }
+
+  const submitBtn = document.getElementById("manual-edit-submit");
+  submitBtn.disabled = true;
+
+  const { error } = await client.rpc("admin_update_bank_rate", params);
+
+  submitBtn.disabled = false;
+
+  if (error) {
+    manualEditError.textContent = "Hata: " + error.message;
+    manualEditError.hidden = false;
+    return;
+  }
+
+  manualEditDialog.close();
+  manualEditContext = null;
+  showToast("Değer doğrudan güncellendi ve yayınlandı.", false);
+  await loadAll();
 });
 
 // ---------------------------------------------------------------------------
@@ -221,6 +317,8 @@ function openProposalForm(rate, mode) {
   document.getElementById("p-alt-limit").value = rate.alt_limit;
   document.getElementById("p-ust-limit").value = rate.ust_limit;
   document.getElementById("p-vadesiz").value = rate.vadesizde_kalacak;
+  document.getElementById("p-vadesiz-tipi").value = rate.vadesiz_hesaplama_tipi || "sabit";
+  document.getElementById("p-vadesiz-oran").value = rate.vadesiz_oran ?? "";
   document.getElementById("p-oran").value = rate.yillik_brut_oran;
   document.getElementById("p-fon").value = rate.gerekli_fon_bakiyesi ?? "";
   document.getElementById("p-not").value = rate.note ?? "";
@@ -240,10 +338,13 @@ proposalForm.addEventListener("submit", async (e) => {
   const { rate } = proposalContext;
 
   const fonRaw = document.getElementById("p-fon").value;
+  const vadesizOranRaw = document.getElementById("p-vadesiz-oran").value;
   const proposedData = {
     alt_limit: Number(document.getElementById("p-alt-limit").value),
     ust_limit: Number(document.getElementById("p-ust-limit").value),
     vadesizde_kalacak: Number(document.getElementById("p-vadesiz").value),
+    vadesiz_hesaplama_tipi: document.getElementById("p-vadesiz-tipi").value,
+    vadesiz_oran: vadesizOranRaw === "" ? null : Number(vadesizOranRaw),
     yillik_brut_oran: Number(document.getElementById("p-oran").value),
     gerekli_fon_bakiyesi: fonRaw === "" ? null : Number(fonRaw),
     note: document.getElementById("p-not").value,
@@ -343,6 +444,9 @@ function renderProposalCell(request) {
     if (data[key] !== undefined && data[key] !== null) {
       rows.push([label, formatter(data[key])]);
     }
+  }
+  if (data.vadesiz_hesaplama_tipi === "yuzde" && data.vadesiz_oran !== undefined && data.vadesiz_oran !== null) {
+    rows.push(["Vadesiz Oranı", `Bakiyenin %${numberFmt.format(data.vadesiz_oran)}'i`]);
   }
   if (data.gerekli_fon_bakiyesi) {
     rows.push(["Gerekli Fon", fmtMoney(data.gerekli_fon_bakiyesi)]);
@@ -466,6 +570,237 @@ async function loadAuditLog() {
     auditTbody.appendChild(tr);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Günlük Kontrol ve Uyarılar
+// ---------------------------------------------------------------------------
+
+const FINDING_STATUS_LABEL = {
+  no_change: "Değişiklik yok",
+  rate_changed: "Değişiklik bulundu — onay bekliyor",
+  unreachable: "Kaynağa erişilemedi",
+  parse_error: "Otomatik doğrulanamadı — manuel kontrol gerekli",
+  manual_required: "Otomatik doğrulanamadı — manuel kontrol gerekli",
+  not_attempted: "Henüz kontrol edilmedi",
+};
+
+function fmtDateTime(iso) {
+  return iso ? new Date(iso).toLocaleString("tr-TR") : "—";
+}
+
+function dailyCheckStatusOf(findingsForSource) {
+  if (!findingsForSource || findingsForSource.length === 0) return "not_attempted";
+  const types = findingsForSource.map((f) => f.finding_type);
+  if (types.includes("rate_changed")) return "rate_changed";
+  if (types.includes("parse_error")) return "parse_error";
+  if (types.includes("unreachable")) return "unreachable";
+  if (types.includes("manual_required")) return "manual_required";
+  return "no_change";
+}
+
+function fmtBandShort(v) {
+  if (!v) return "—";
+  const oran = v.yillik_brut_oran !== undefined ? fmtPercent(v.yillik_brut_oran) : "—";
+  const vadesiz =
+    v.vadesiz_hesaplama_tipi === "yuzde"
+      ? `bakiyenin %${numberFmt.format(v.vadesiz_oran ?? 0)}'i`
+      : fmtMoney(v.vadesizde_kalacak);
+  return `${fmtMoney(v.alt_limit)}–${fmtMoney(v.ust_limit)} · ${oran} · vadesiz: ${vadesiz}`;
+}
+
+async function loadDailyCheck() {
+  dailyCheckTbody.innerHTML = `<tr><td colspan="6" class="muted">Yükleniyor…</td></tr>`;
+
+  const { data: lastRun } = await client
+    .from("rate_check_runs")
+    .select("id, started_at, finished_at, status, sources_checked, sources_unreachable, findings_created, dry_run")
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { data: sources, error: sourcesErr } = await client
+    .from("bank_sources")
+    .select(
+      "id, bank_id, source_url, requires_manual_check, last_checked_at, last_check_status, banks(name)"
+    )
+    .order("created_at", { ascending: true });
+
+  if (sourcesErr || !sources) {
+    dailyCheckTbody.innerHTML = `<tr><td colspan="6" class="error-text">Hata: ${sourcesErr ? sourcesErr.message : "bank_sources okunamadı"}</td></tr>`;
+    return;
+  }
+
+  const { data: currentRateRows } = await client
+    .from("bank_rates")
+    .select("bank_id, yillik_brut_oran")
+    .eq("is_active", true);
+
+  const ratesByBank = new Map();
+  for (const r of currentRateRows || []) {
+    if (!ratesByBank.has(r.bank_id)) ratesByBank.set(r.bank_id, []);
+    ratesByBank.get(r.bank_id).push(Number(r.yillik_brut_oran));
+  }
+
+  function summarizeCurrentRate(bankId) {
+    const rates = ratesByBank.get(bankId);
+    if (!rates || rates.length === 0) return "—";
+    const min = Math.min(...rates);
+    const max = Math.max(...rates);
+    const range = min === max ? fmtPercent(min) : `${fmtPercent(min)} – ${fmtPercent(max)}`;
+    return rates.length > 1 ? `${range} (${rates.length} bant)` : range;
+  }
+
+  let findings = [];
+  if (lastRun) {
+    const { data: findingsData } = await client
+      .from("rate_check_findings")
+      .select(
+        "id, bank_source_id, bank_id, finding_type, current_value, observed_value, evidence_url, detail, rate_change_request_id, rate_change_requests(id, status)"
+      )
+      .eq("run_id", lastRun.id);
+    findings = findingsData || [];
+  }
+
+  const findingsBySource = new Map();
+  for (const f of findings) {
+    if (!findingsBySource.has(f.bank_source_id)) findingsBySource.set(f.bank_source_id, []);
+    findingsBySource.get(f.bank_source_id).push(f);
+  }
+
+  // Üst özet
+  statLastRun.textContent = lastRun ? fmtDateTime(lastRun.started_at) : "Henüz çalışmadı";
+  statChecked.textContent = lastRun ? String(lastRun.sources_checked) : "—";
+  const counts = { no_change: 0, rate_changed: 0, unreachable: 0, parse_error: 0, manual_required: 0 };
+  for (const f of findings) {
+    if (counts[f.finding_type] !== undefined) counts[f.finding_type]++;
+  }
+  statNoChange.textContent = String(counts.no_change);
+  statChanged.textContent = String(counts.rate_changed);
+  statWarnings.textContent = String(counts.parse_error);
+  statUnreachable.textContent = String(counts.unreachable);
+  statManual.textContent = String(counts.manual_required);
+
+  if (sources.length === 0) {
+    dailyCheckTbody.innerHTML = `<tr><td colspan="6" class="muted">Henüz kaynak tanımlı değil.</td></tr>`;
+    return;
+  }
+
+  dailyCheckTbody.innerHTML = "";
+  for (const source of sources) {
+    const sourceFindings = findingsBySource.get(source.id) || [];
+    const status = dailyCheckStatusOf(sourceFindings);
+    const bankName = source.banks ? source.banks.name : source.bank_id;
+
+    const tr = document.createElement("tr");
+    const statusCell = `<span class="status-badge status-${status}">${FINDING_STATUS_LABEL[status]}</span>`;
+
+    let currentCell = escapeHtml(summarizeCurrentRate(source.bank_id));
+    let foundCell = "—";
+
+    if (status === "rate_changed") {
+      const changedFindings = sourceFindings.filter((f) => f.finding_type === "rate_changed");
+      const parts = [];
+      for (const f of changedFindings) {
+        const reqStatus = f.rate_change_requests ? f.rate_change_requests.status : null;
+        const oldNew = `
+          <div class="diff-box">
+            <span class="diff-old">${escapeHtml(fmtBandShort(f.current_value))}</span>
+            <span class="diff-new">${escapeHtml(fmtBandShort(f.observed_value))}</span>
+          </div>`;
+        let actions = "—";
+        if (reqStatus === "pending" && f.rate_change_request_id) {
+          actions = `
+            <button type="button" class="link-btn" data-req-action="approve" data-req-id="${f.rate_change_request_id}">Onayla ve Yayınla</button>
+            <button type="button" class="link-btn danger" data-req-action="reject" data-req-id="${f.rate_change_request_id}">Reddet</button>
+          `;
+        } else if (reqStatus) {
+          actions = `<span class="muted">${escapeHtml(reqStatus)}</span>`;
+        }
+        parts.push(`<div class="daily-check-finding">${oldNew}<div class="actions-cell">${actions}</div></div>`);
+      }
+      foundCell = parts.join("");
+    } else if (status === "parse_error" || status === "unreachable" || status === "manual_required") {
+      const detail = sourceFindings.map((f) => f.detail).filter(Boolean).join(" ");
+      foundCell = `<div class="warning-box">${escapeHtml(detail || FINDING_STATUS_LABEL[status])}</div>`;
+    } else if (status === "no_change") {
+      foundCell = `<span class="muted">—</span>`;
+    }
+
+    tr.innerHTML = `
+      <td>${escapeHtml(bankName)}</td>
+      <td>${statusCell}</td>
+      <td>${fmtDateTime(source.last_checked_at)}</td>
+      <td><a href="${escapeHtml(source.source_url)}" target="_blank" rel="noopener">Kaynağı Aç</a></td>
+      <td>${currentCell}</td>
+      <td class="note-cell">${foundCell}</td>
+    `;
+    dailyCheckTbody.appendChild(tr);
+  }
+}
+
+dailyCheckTbody.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-req-action]");
+  if (!btn) return;
+  const requestId = btn.dataset.reqId;
+  const action = btn.dataset.reqAction;
+
+  const note = prompt(action === "approve" ? "Onay notu (opsiyonel):" : "Red gerekçesi (opsiyonel):") || null;
+
+  btn.disabled = true;
+  const rpcName = action === "approve" ? "approve_rate_change" : "reject_rate_change";
+  const { error } = await client.rpc(rpcName, { p_request_id: requestId, p_review_note: note });
+  btn.disabled = false;
+
+  if (error) {
+    showToast("Hata: " + error.message, true);
+    return;
+  }
+
+  showToast(action === "approve" ? "Değişiklik onaylandı ve yayınlandı." : "Değişiklik reddedildi.", false);
+  await loadAll();
+});
+
+runCheckBtn.addEventListener("click", async () => {
+  runCheckBtn.disabled = true;
+  runCheckBtn.textContent = "Kontrol ediliyor…";
+
+  try {
+    const { data: sessionData } = await client.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) {
+      showToast("Oturum bulunamadı, lütfen tekrar giriş yapın.", true);
+      return;
+    }
+
+    const res = await fetch(EDGE_FUNCTION_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: SUPABASE_ANON_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      showToast(`Kontrol başarısız (${res.status}): ${body}`, true);
+      return;
+    }
+
+    const result = await res.json();
+    showToast(
+      `Kontrol tamamlandı: ${result.sources_checked} ürün kontrol edildi, ${result.findings_created} bulgu oluştu.`,
+      false
+    );
+    await loadDailyCheck();
+  } catch (err) {
+    showToast("Kontrol çalıştırılamadı: " + err.message, true);
+  } finally {
+    runCheckBtn.disabled = false;
+    runCheckBtn.textContent = "Şimdi Kontrol Et";
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Yardımcılar

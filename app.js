@@ -110,7 +110,7 @@ async function fetchActiveRatesFromSupabase() {
   const { data, error } = await supabaseClient
     .from("bank_rates")
     .select(
-      "alt_limit, ust_limit, vadesizde_kalacak, yillik_brut_oran, note, gerekli_fon_bakiyesi, banks!inner(name, is_enabled)"
+      "alt_limit, ust_limit, vadesizde_kalacak, yillik_brut_oran, note, gerekli_fon_bakiyesi, vadesiz_hesaplama_tipi, vadesiz_oran, banks!inner(name, is_enabled)"
     )
     .eq("is_active", true)
     .eq("banks.is_enabled", true);
@@ -130,7 +130,11 @@ async function fetchActiveRatesFromSupabase() {
       vadesizdeKalacak: Number(row.vadesizde_kalacak),
       yillikBrutOran: Number(row.yillik_brut_oran),
       not: row.note || "",
+      vadesizHesaplamaTipi: row.vadesiz_hesaplama_tipi || "sabit",
     };
+    if (row.vadesiz_oran !== null && row.vadesiz_oran !== undefined) {
+      entry.vadesizOran = Number(row.vadesiz_oran);
+    }
     if (row.gerekli_fon_bakiyesi !== null && row.gerekli_fon_bakiyesi !== undefined) {
       entry.gerekliFonBakiyesi = Number(row.gerekli_fon_bakiyesi);
     }
@@ -143,7 +147,8 @@ async function fetchActiveRatesFromSupabase() {
       Number.isFinite(entry.altLimit) &&
       Number.isFinite(entry.ustLimit) &&
       Number.isFinite(entry.vadesizdeKalacak) &&
-      Number.isFinite(entry.yillikBrutOran)
+      Number.isFinite(entry.yillikBrutOran) &&
+      (entry.vadesizHesaplamaTipi !== "yuzde" || Number.isFinite(entry.vadesizOran))
   );
   if (!isValid) {
     throw new Error("Supabase verisinde geçersiz veya eksik sayısal alan(lar) var.");
@@ -203,10 +208,22 @@ function buildIneligibleMessage(entries, principal) {
   return `Bu ürün en fazla ${formatWholeTL(maxUstLimit)} için kullanılabilir.`;
 }
 
+// "sabit" tipte vadesizde kalan tutar TL cinsinden sabittir (mevcut/varsayılan
+// davranış). "yuzde" tipte (ör. Akbank Serbest Plus %10) vadesizde kalan
+// tutar, GÜNCEL bakiyenin bir yüzdesidir — bileşik kazanç arttıkça vadesizde
+// kalan TL tutarı da büyür, ama oranı sabit kalır.
+function getVadesizdeKalan(entry, balance) {
+  if (entry.vadesizHesaplamaTipi === "yuzde") {
+    return balance * (entry.vadesizOran / 100);
+  }
+  return entry.vadesizdeKalacak;
+}
+
 function simulateCompoundNetReturn(entry, principal, days) {
   let balance = principal;
   for (let day = 0; day < days; day++) {
-    const degerlenecekTutar = Math.max(0, balance - entry.vadesizdeKalacak);
+    const vadesizdeKalan = getVadesizdeKalan(entry, balance);
+    const degerlenecekTutar = Math.max(0, balance - vadesizdeKalan);
     const gunlukBrutGetiri = (degerlenecekTutar * entry.yillikBrutOran) / YIL_GUN;
     const gunlukNetGetiri = gunlukBrutGetiri * NET_KATSAYI;
     balance += gunlukNetGetiri;
@@ -215,7 +232,7 @@ function simulateCompoundNetReturn(entry, principal, days) {
 }
 
 function calculateResult(entry, principal, gunSayisi) {
-  const vadesizdeKalan = entry.vadesizdeKalacak;
+  const vadesizdeKalan = getVadesizdeKalan(entry, principal);
   const degerlenecekTutar = Math.max(0, principal - vadesizdeKalan);
   const gunlukBrutGetiri = (degerlenecekTutar * entry.yillikBrutOran) / YIL_GUN;
   const gunlukNetGetiri = gunlukBrutGetiri * NET_KATSAYI;
