@@ -1062,7 +1062,7 @@
   {
     "banka": "Akbank Serbest Plus Hesap",
     "altLimit": 10000,
-    "ustLimit": 24999999.99,
+    "ustLimit": 25000000,
     "vadesizdeKalacak": 0,
     "vadesizHesaplamaTipi": "yuzde",
     "vadesizOran": 10,
@@ -1071,7 +1071,7 @@
   },
   {
     "banka": "Akbank Serbest Plus Hesap",
-    "altLimit": 25000000,
+    "altLimit": 25000000.01,
     "ustLimit": 9999999999,
     "vadesizdeKalacak": 0,
     "vadesizHesaplamaTipi": "yuzde",

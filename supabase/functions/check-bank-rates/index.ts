@@ -214,9 +214,13 @@ function parseAkbankSerbestPlus(html: string): ParseResult {
     const rangeMatch = label.match(/^([\d.,]+)\s*TL\s*-\s*([\d.,]+)\s*TL/i);
 
     if (uzeriMatch) {
-      const alt = parseTRMoney(uzeriMatch[1]);
-      if (alt === null) return fail(`Tutar aralığı ayrıştırılamadı: "${label}"`);
-      rawTiers.push({ alt, ust: 9999999999, rate });
+      // "X TL üzeri" = X'in KENDİSİ DEĞİL, yalnızca üzeri (kesin olarak X'ten
+      // büyük). X'in kendisi bir önceki ("...-X TL") bandına dahildir. Bu
+      // yüzden alt sınır X değil, X+0.01 olmalı — aksi halde X'in kendisi
+      // yanlışlıkla bu (daha düşük) orana düşer.
+      const threshold = parseTRMoney(uzeriMatch[1]);
+      if (threshold === null) return fail(`Tutar aralığı ayrıştırılamadı: "${label}"`);
+      rawTiers.push({ alt: threshold + 0.01, ust: 9999999999, rate });
     } else if (rangeMatch) {
       const alt = parseTRMoney(rangeMatch[1]);
       const ust = parseTRMoney(rangeMatch[2]);
