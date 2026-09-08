@@ -730,6 +730,12 @@ async function loadDailyCheck() {
     return;
   }
 
+  // Bulunan/önerilen detayları hücrede DEĞİL, ayrı bir modalda gösterilir
+  // (uzun içerik tabloyu taşırıp mobil/masaüstü düzeni bozmasın diye).
+  // Hücrede yalnızca "Uyarıyı Gör" düğmesi olur; tam içerik burada, satırın
+  // kaynak id'siyle anahtarlanmış olarak tutulur.
+  dailyDetailContent.clear();
+
   dailyCheckTbody.innerHTML = "";
   for (const source of sources) {
     const sourceFindings = findingsBySource.get(source.id) || [];
@@ -740,7 +746,7 @@ async function loadDailyCheck() {
     const statusCell = `<span class="status-badge status-${status}">${FINDING_STATUS_LABEL[status]}</span>`;
 
     let currentCell = escapeHtml(summarizeCurrentRate(source.bank_id));
-    let foundCell = "—";
+    let detailHtml = "";
 
     if (status === "rate_changed") {
       const changedFindings = sourceFindings.filter((f) => f.finding_type === "rate_changed");
@@ -766,14 +772,14 @@ async function loadDailyCheck() {
         }
         parts.push(`<div class="daily-check-finding">${oldNew}<div class="actions-cell">${actions}</div></div>`);
       }
-      foundCell = parts.join("");
+      detailHtml = parts.join("");
     } else if (status === "parse_error" || status === "unreachable" || status === "manual_required") {
       const detail = sourceFindings.map((f) => f.detail).filter(Boolean).join(" ");
-      foundCell = `<div class="warning-box">${escapeHtml(detail || FINDING_STATUS_LABEL[status])}</div>`;
+      detailHtml = `<div class="warning-box">${escapeHtml(detail || FINDING_STATUS_LABEL[status])}</div>`;
     } else if (status === "no_change" || status === "accepted_difference") {
       const acceptedFindings = sourceFindings.filter((f) => f.finding_type === "accepted_difference");
       if (acceptedFindings.length > 0) {
-        foundCell = acceptedFindings
+        detailHtml = acceptedFindings
           .map(
             (f) => `
               <div class="daily-check-finding">
@@ -785,9 +791,19 @@ async function loadDailyCheck() {
               </div>`
           )
           .join("");
-      } else {
-        foundCell = `<span class="muted">—</span>`;
       }
+    }
+
+    let foundCell = `<span class="muted">—</span>`;
+    if (detailHtml) {
+      dailyDetailContent.set(source.id, { title: `${bankName} — ${FINDING_STATUS_LABEL[status]}`, html: detailHtml });
+      const btnClass =
+        status === "rate_changed"
+          ? "detail-btn"
+          : status === "parse_error" || status === "unreachable" || status === "manual_required"
+            ? "warning-btn"
+            : "ok-btn";
+      foundCell = `<button type="button" class="link-btn ${btnClass}" data-daily-detail-btn data-source-id="${source.id}">Uyarıyı Gör</button>`;
     }
 
     tr.innerHTML = `
@@ -796,13 +812,64 @@ async function loadDailyCheck() {
       <td>${fmtDateTime(source.last_checked_at)}</td>
       <td><a href="${escapeHtml(source.source_url)}" target="_blank" rel="noopener">Kaynağı Aç</a></td>
       <td>${currentCell}</td>
-      <td class="note-cell">${foundCell}</td>
+      <td>${foundCell}</td>
     `;
     dailyCheckTbody.appendChild(tr);
   }
 }
 
-dailyCheckTbody.addEventListener("click", async (e) => {
+const dailyDetailContent = new Map(); // source.id -> { title, html }
+const dailyDetailDialog = document.getElementById("daily-detail-dialog");
+const dailyDetailTitle = document.getElementById("daily-detail-title");
+const dailyDetailBody = document.getElementById("daily-detail-body");
+
+function openDailyDetailDialog(sourceId) {
+  const entry = dailyDetailContent.get(sourceId);
+  if (!entry) return;
+  dailyDetailTitle.textContent = entry.title;
+  dailyDetailBody.innerHTML = entry.html;
+  dailyDetailDialog.showModal();
+}
+
+document.getElementById("daily-detail-close").addEventListener("click", () => {
+  dailyDetailDialog.close();
+});
+
+// Dışına (backdrop'a) tıklayınca kapat; Escape <dialog>'un kendi davranışı.
+dailyDetailDialog.addEventListener("click", (e) => {
+  const rect = dailyDetailDialog.getBoundingClientRect();
+  const clickedInside =
+    e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
+  if (!clickedInside) {
+    dailyDetailDialog.close();
+  }
+});
+
+async function handleRateChangeAction(requestId, action) {
+  const note = prompt(action === "approve" ? "Onay notu (opsiyonel):" : "Red gerekçesi (opsiyonel):") || null;
+
+  const rpcName = action === "approve" ? "approve_rate_change" : "reject_rate_change";
+  const { error } = await client.rpc(rpcName, { p_request_id: requestId, p_review_note: note });
+
+  if (error) {
+    showToast("Hata: " + error.message, true);
+    return;
+  }
+
+  showToast(action === "approve" ? "Değişiklik onaylandı ve yayınlandı." : "Değişiklik reddedildi.", false);
+  dailyDetailDialog.close();
+  await loadAll();
+}
+
+dailyCheckTbody.addEventListener("click", (e) => {
+  const detailBtn = e.target.closest("button[data-daily-detail-btn]");
+  if (!detailBtn) return;
+  openDailyDetailDialog(detailBtn.dataset.sourceId);
+});
+
+// Modal içindeki Onayla/Reddet/Bu farkı kabul et düğmeleri (dinamik olarak
+// içine eklendiği için delegasyon dialog üzerinde yapılır).
+dailyDetailBody.addEventListener("click", async (e) => {
   const acceptBtn = e.target.closest("button[data-accept-diff-btn]");
   if (acceptBtn) {
     openAcceptDiffDialog(acceptBtn.dataset.reqId, acceptBtn.dataset.current, acceptBtn.dataset.observed);
@@ -811,23 +878,9 @@ dailyCheckTbody.addEventListener("click", async (e) => {
 
   const btn = e.target.closest("button[data-req-action]");
   if (!btn) return;
-  const requestId = btn.dataset.reqId;
-  const action = btn.dataset.reqAction;
-
-  const note = prompt(action === "approve" ? "Onay notu (opsiyonel):" : "Red gerekçesi (opsiyonel):") || null;
-
   btn.disabled = true;
-  const rpcName = action === "approve" ? "approve_rate_change" : "reject_rate_change";
-  const { error } = await client.rpc(rpcName, { p_request_id: requestId, p_review_note: note });
+  await handleRateChangeAction(btn.dataset.reqId, btn.dataset.reqAction);
   btn.disabled = false;
-
-  if (error) {
-    showToast("Hata: " + error.message, true);
-    return;
-  }
-
-  showToast(action === "approve" ? "Değişiklik onaylandı ve yayınlandı." : "Değişiklik reddedildi.", false);
-  await loadAll();
 });
 
 // ---------------------------------------------------------------------------
@@ -887,6 +940,7 @@ acceptDiffForm.addEventListener("submit", async (e) => {
 
   acceptDiffDialog.close();
   acceptDiffContext = null;
+  if (dailyDetailDialog.open) dailyDetailDialog.close();
   showToast("Fark kabul edildi — bir daha aynı fark için yeni talep açılmayacak.", false);
   await loadAll();
 });

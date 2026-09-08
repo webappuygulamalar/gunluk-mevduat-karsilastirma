@@ -189,6 +189,51 @@ th, td {
   overflow-wrap: anywhere;
 }
 
+.daily-detail-dialog {
+  max-width: 560px;
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+}
+.daily-detail-dialog #daily-detail-body {
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+.daily-detail-dialog #daily-detail-body .daily-check-finding:first-child {
+  padding-top: 0;
+}
+.daily-detail-dialog #daily-detail-body p {
+  margin: 0 0 10px;
+}
+
+@media (max-width: 600px) {
+  .daily-detail-dialog {
+    width: calc(100% - 24px);
+    max-height: calc(100vh - 32px);
+  }
+}
+
+.link-btn.detail-btn {
+  text-decoration: none;
+  background: var(--pending-bg);
+  color: var(--pending-text);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+.link-btn.detail-btn:hover { background: var(--pending-bg); opacity: 0.85; }
+.link-btn.warning-btn {
+  background: #fff4d6;
+  color: #8a5a00;
+}
+.link-btn.error-btn {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.link-btn.ok-btn {
+  background: var(--ok-bg);
+  color: var(--ok-text);
+}
+
 .badge {
   display: inline-block;
   padding: 2px 8px;

@@ -55,7 +55,7 @@
         <h2>Günlük Kontrol ve Uyarılar</h2>
         <button type="button" id="run-check-btn">Şimdi Kontrol Et</button>
       </div>
-      <p class="muted">Her gece 09:00 (İstanbul saati) otomatik çalışır. Bulunan her değişiklik önce burada onay bekler — hiçbir oran otomatik yayımlanmaz. <strong>Kontrol edilen ürün sayısı tek başına bir başarı göstergesi değildir</strong> — aşağıdaki dört kategori ayrı ayrı izlenmelidir.</p>
+      <p class="muted">Her sabah 09:00 (İstanbul saati) otomatik çalışır. Bulunan her değişiklik önce burada onay bekler — hiçbir oran otomatik yayımlanmaz. <strong>Kontrol edilen ürün sayısı tek başına bir başarı göstergesi değildir</strong> — aşağıdaki dört kategori ayrı ayrı izlenmelidir.</p>
 
       <div id="check-summary-grid" class="stat-grid">
         <div class="stat-tile stat-tile-meta"><span class="stat-label">Son kontrol zamanı</span><span class="stat-value" id="stat-last-run">—</span></div>
@@ -226,6 +226,13 @@
     <h2>Ürün Notu</h2>
     <p id="note-dialog-text"></p>
     <button type="button" id="note-dialog-close" class="secondary">Kapat</button>
+  </dialog>
+
+  <!-- Günlük kontrol satırı detay/uyarı penceresi -->
+  <dialog id="daily-detail-dialog" class="note-dialog daily-detail-dialog">
+    <h2 id="daily-detail-title">Detay</h2>
+    <div id="daily-detail-body"></div>
+    <button type="button" id="daily-detail-close" class="secondary">Kapat</button>
   </dialog>
 
   <!-- "Bu farkı kabul et" gerekçe penceresi -->
