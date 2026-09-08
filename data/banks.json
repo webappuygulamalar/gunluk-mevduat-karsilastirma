@@ -1,7 +1,7 @@
 [
   {
     "banka": "TOM Bank",
-    "altLimit": 0,
+    "altLimit": 7500,
     "ustLimit": 49999.99,
     "vadesizdeKalacak": 7500,
     "yillikBrutOran": 0.43,

@@ -74,6 +74,11 @@ interface ParsedBand {
   vadesizde_kalacak: number;
   vadesiz_hesaplama_tipi: "sabit" | "yuzde";
   vadesiz_oran: number | null;
+  // Kaynak sayfadan ayrıştırılan HAM metin değerleri (normalize edilmeden
+  // önce) — admin panelinde "ham kaynak değeri" olarak ayrıca gösterilir.
+  // Her parser doldurmak zorunda değil (opsiyonel); doldurmayanlar için
+  // admin panelinde yalnızca normalize edilmiş değer gösterilir.
+  raw?: Record<string, string>;
 }
 
 interface ParseResult {
@@ -107,10 +112,15 @@ function parseTomBank(html: string): ParseResult {
     const cells = Array.from(row.querySelectorAll("td"));
     if (cells.length < 4) return fail(`Beklenmeyen hücre sayısı: ${cells.length}`);
 
-    const rate = parseTRPercent(textOf(cells[0]));
-    const alt = parseTRMoney(textOf(cells[1]));
-    const ust = parseTRMoney(textOf(cells[2]));
-    const vadesiz = parseTRMoney(textOf(cells[3]));
+    const rateRaw = textOf(cells[0]);
+    const altRaw = textOf(cells[1]);
+    const ustRaw = textOf(cells[2]);
+    const vadesizRaw = textOf(cells[3]);
+
+    const rate = parseTRPercent(rateRaw);
+    const alt = parseTRMoney(altRaw);
+    const ust = parseTRMoney(ustRaw);
+    const vadesiz = parseTRMoney(vadesizRaw);
 
     if (rate === null || alt === null || ust === null || vadesiz === null) {
       return fail(`Sayısal alan ayrıştırılamadı (satır: ${textOf(row)})`);
@@ -123,6 +133,12 @@ function parseTomBank(html: string): ParseResult {
       vadesizde_kalacak: vadesiz,
       vadesiz_hesaplama_tipi: "sabit",
       vadesiz_oran: null,
+      raw: {
+        "Oran (kaynak sütunu)": rateRaw,
+        "Alt Limit (kaynak sütunu)": altRaw,
+        "Üst Limit (kaynak sütunu)": ustRaw,
+        "Vadesiz Alt Limit (kaynak sütunu)": vadesizRaw,
+      },
     });
   }
 
@@ -378,6 +394,27 @@ function canonicalJson(value: unknown): string {
   return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalJson(obj[k])}`).join(",")}}`;
 }
 
+// bank_rate_id + gözlemlenen (kaynaktan ayrıştırılan) bant değerlerinin
+// deterministik SHA-256 özeti. "Kabul edilmiş fark" eşleştirmesinde
+// kullanılır: aynı bant için kaynaktan AYNI değerler tekrar okunursa aynı
+// parmak izi üretilir (yeniden talep açılmaz); kaynaktaki değer GERÇEKTEN
+// değişirse parmak izi de değişir (yeniden uyarı üretilir).
+async function computeFingerprint(bankRateId: string, band: ParsedBand): Promise<string> {
+  const payload = canonicalJson({
+    bank_rate_id: bankRateId,
+    alt_limit: band.alt_limit,
+    ust_limit: band.ust_limit,
+    yillik_brut_oran: band.yillik_brut_oran,
+    vadesizde_kalacak: band.vadesizde_kalacak,
+    vadesiz_hesaplama_tipi: band.vadesiz_hesaplama_tipi,
+    vadesiz_oran: band.vadesiz_oran,
+  });
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 function toProposedData(b: ParsedBand, note: string, gerekliFonBakiyesi: number | null) {
   return {
     alt_limit: b.alt_limit,
@@ -538,7 +575,8 @@ async function processSource(
     return { status: "parse_error", findingsCreated: 1 };
   }
 
-  let anyChanged = false;
+  let anyNewChange = false; // gerçekten yeni, kabul edilmemiş bir fark var mı
+  let anyAcceptedDiff = false; // fark var ama daha önce admin tarafından kabul edilmiş
   let findingsCreated = 0;
 
   for (let i = 0; i < stored.length; i++) {
@@ -555,10 +593,53 @@ async function processSource(
 
     if (bandsEqual(storedAsParsed, parsedBand)) continue;
 
-    anyChanged = true;
     const proposedData = toProposedData(parsedBand, storedBand.note ?? "", storedBand.gerekli_fon_bakiyesi);
+    const fingerprint = await computeFingerprint(storedBand.id, parsedBand);
+
+    // Bu tam bant + tam gözlemlenen değer daha önce bir admin tarafından
+    // "kabul edilmiş" mi? Bu kontrol dry run'da da (salt okunur, hiçbir şey
+    // yazmadan) yapılır ki dry run gerçek çalışmanın ne yapacağını doğru
+    // önizlesin.
+    const { data: accepted } = await supabase
+      .from("accepted_rate_differences")
+      .select("id, occurrence_count")
+      .eq("bank_rate_id", storedBand.id)
+      .eq("fingerprint", fingerprint)
+      .maybeSingle();
+
+    if (accepted) {
+      anyAcceptedDiff = true;
+      if (!dryRun) {
+        await supabase
+          .from("accepted_rate_differences")
+          .update({
+            occurrence_count: (accepted.occurrence_count ?? 1) + 1,
+            last_checked_at: new Date().toISOString(),
+            last_run_id: runId,
+          })
+          .eq("id", accepted.id);
+      }
+      // Bu bant için YENİ bir rate_change_requests AÇILMAZ — yalnızca bilgi
+      // amaçlı bir 'accepted_difference' bulgusu kaydedilir (izlenebilirlik
+      // için; admin panelinde "Otomatik doğrulandı" olarak sayılır).
+      await supabase.from("rate_check_findings").insert({
+        run_id: runId,
+        bank_source_id: source.id,
+        bank_id: source.bank_id,
+        finding_type: "accepted_difference",
+        evidence_url: source.source_url,
+        current_value: storedBand,
+        observed_value: proposedData,
+        fingerprint,
+        raw_evidence: parsedBand.raw ?? null,
+        detail: dryRun ? "(dry run) Önceden kabul edilmiş, bilinen bir fark." : "Önceden kabul edilmiş, bilinen bir fark — yeni talep açılmadı.",
+      });
+      findingsCreated++;
+      continue;
+    }
 
     if (dryRun) {
+      anyNewChange = true;
       await supabase.from("rate_check_findings").insert({
         run_id: runId,
         bank_source_id: source.id,
@@ -567,11 +648,15 @@ async function processSource(
         evidence_url: source.source_url,
         current_value: storedBand,
         observed_value: proposedData,
+        fingerprint,
+        raw_evidence: parsedBand.raw ?? null,
         detail: "(dry run — talep oluşturulmadı)",
       });
       findingsCreated++;
       continue;
     }
+
+    anyNewChange = true;
 
     const { data: existingPending } = await supabase
       .from("rate_change_requests")
@@ -595,6 +680,8 @@ async function processSource(
         current_value: storedBand,
         observed_value: proposedData,
         rate_change_request_id: duplicate.id,
+        fingerprint,
+        raw_evidence: parsedBand.raw ?? null,
         detail: "Bu değişiklik için zaten onay bekleyen bir talep var (mükerrer oluşturulmadı).",
       });
       findingsCreated++;
@@ -625,12 +712,14 @@ async function processSource(
       current_value: storedBand,
       observed_value: proposedData,
       rate_change_request_id: newRequest?.id ?? null,
+      fingerprint,
+      raw_evidence: parsedBand.raw ?? null,
       detail: insertErr ? `Talep oluşturulamadı: ${insertErr.message}` : undefined,
     });
     findingsCreated++;
   }
 
-  if (!anyChanged) {
+  if (!anyNewChange && !anyAcceptedDiff) {
     await supabase.from("rate_check_findings").insert({
       run_id: runId,
       bank_source_id: source.id,
@@ -639,12 +728,12 @@ async function processSource(
       evidence_url: source.source_url,
       current_value: stored,
     });
-    findingsCreated = 1;
+    findingsCreated++;
   }
 
   await supabase
     .from("bank_sources")
-    .update({ last_checked_at: new Date().toISOString(), last_check_status: anyChanged ? "changed" : "ok" })
+    .update({ last_checked_at: new Date().toISOString(), last_check_status: anyNewChange ? "changed" : "ok" })
     .eq("id", source.id);
 
   return { status: "ok", findingsCreated };
@@ -762,6 +851,45 @@ Deno.serve(async (req: Request) => {
 
   const finalStatus = sourcesUnreachable === 0 ? "success" : sourcesUnreachable === sourcesChecked ? "failure" : "partial_failure";
 
+  // "11/11 kontrol edildi" TEK BAŞINA bir başarı ifadesi değildir — dört
+  // kategoriye ayrılmış sayım, gerçek durumu gösterir. Bir kaynağın birden
+  // fazla bandı değiştiyse (rate_changed) o kaynak yalnızca BİR kez
+  // "değişiklik bulundu" olarak sayılır (distinct bank_source_id).
+  const { data: runFindings } = await supabase
+    .from("rate_check_findings")
+    .select("bank_source_id, finding_type")
+    .eq("run_id", run.id);
+
+  const statusBySource = new Map<string, string>();
+  for (const f of runFindings ?? []) {
+    const prev = statusBySource.get(f.bank_source_id);
+    // Öncelik sırası: rate_changed > parse_error > unreachable > manual_required > accepted_difference/no_change
+    const rank: Record<string, number> = {
+      rate_changed: 4,
+      parse_error: 3,
+      unreachable: 3,
+      manual_required: 2,
+      accepted_difference: 1,
+      no_change: 1,
+    };
+    if (!prev || (rank[f.finding_type] ?? 0) > (rank[prev] ?? 0)) {
+      statusBySource.set(f.bank_source_id, f.finding_type);
+    }
+  }
+
+  const categoryCounts = {
+    auto_verified_no_change: 0, // Otomatik doğrulandı – değişiklik yok
+    change_pending_approval: 0, // Değişiklik bulundu – onay bekliyor
+    manual_check_required: 0, // Manuel kontrol gerekli (kalıcı manuel + ayrıştırma hatası)
+    source_unreachable: 0, // Kaynağa ulaşılamadı
+  };
+  for (const type of statusBySource.values()) {
+    if (type === "no_change" || type === "accepted_difference") categoryCounts.auto_verified_no_change++;
+    else if (type === "rate_changed") categoryCounts.change_pending_approval++;
+    else if (type === "manual_required" || type === "parse_error") categoryCounts.manual_check_required++;
+    else if (type === "unreachable") categoryCounts.source_unreachable++;
+  }
+
   await supabase
     .from("rate_check_runs")
     .update({
@@ -781,6 +909,7 @@ Deno.serve(async (req: Request) => {
       sources_checked: sourcesChecked,
       sources_unreachable: sourcesUnreachable,
       findings_created: findingsCreated,
+      categories: categoryCounts,
       summary,
     }),
     { status: 200, headers: { "Content-Type": "application/json" } }

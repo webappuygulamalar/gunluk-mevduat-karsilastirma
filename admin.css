@@ -265,6 +265,37 @@ code {
   color: var(--text);
 }
 
+.stat-tile-meta { background: var(--bg); }
+.stat-tile-ok { background: var(--ok-bg); }
+.stat-tile-ok .stat-value { color: var(--ok-text); }
+.stat-tile-pending { background: var(--pending-bg); }
+.stat-tile-pending .stat-value { color: var(--pending-text); }
+.stat-tile-manual { background: #fff4d6; }
+.stat-tile-manual .stat-value { color: #8a5a00; }
+.stat-tile-error { background: var(--danger-bg); }
+.stat-tile-error .stat-value { color: var(--danger); }
+
+.raw-evidence-box {
+  margin-top: 6px;
+  font-size: 0.78rem;
+}
+.raw-evidence-box summary {
+  cursor: pointer;
+  color: var(--muted);
+  list-style: none;
+}
+.raw-evidence-box summary::-webkit-details-marker { display: none; }
+.raw-evidence-box summary::before { content: "▸ "; }
+.raw-evidence-box[open] summary::before { content: "▾ "; }
+.raw-evidence-box dl {
+  margin: 6px 0 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+}
+.raw-evidence-box dt { font-weight: 600; color: var(--muted); white-space: nowrap; }
+.raw-evidence-box dd { margin: 0; font-family: ui-monospace, monospace; }
+
 .status-badge {
   display: inline-block;
   padding: 2px 8px;
@@ -273,7 +304,8 @@ code {
   font-weight: 600;
   white-space: nowrap;
 }
-.status-no_change { background: var(--ok-bg); color: var(--ok-text); }
+.status-no_change,
+.status-accepted_difference { background: var(--ok-bg); color: var(--ok-text); }
 .status-rate_changed { background: var(--pending-bg); color: var(--pending-text); }
 .status-unreachable,
 .status-parse_error { background: var(--danger-bg); color: var(--danger); }

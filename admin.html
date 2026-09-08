@@ -55,17 +55,17 @@
         <h2>Günlük Kontrol ve Uyarılar</h2>
         <button type="button" id="run-check-btn">Şimdi Kontrol Et</button>
       </div>
-      <p class="muted">Her gece 09:00 (İstanbul saati) otomatik çalışır. Bulunan her değişiklik önce burada onay bekler — hiçbir oran otomatik yayımlanmaz.</p>
+      <p class="muted">Her gece 09:00 (İstanbul saati) otomatik çalışır. Bulunan her değişiklik önce burada onay bekler — hiçbir oran otomatik yayımlanmaz. <strong>Kontrol edilen ürün sayısı tek başına bir başarı göstergesi değildir</strong> — aşağıdaki dört kategori ayrı ayrı izlenmelidir.</p>
 
       <div id="check-summary-grid" class="stat-grid">
-        <div class="stat-tile"><span class="stat-label">Son kontrol</span><span class="stat-value" id="stat-last-run">—</span></div>
-        <div class="stat-tile"><span class="stat-label">Kontrol edilen</span><span class="stat-value" id="stat-checked">—</span></div>
-        <div class="stat-tile"><span class="stat-label">Değişiklik yok</span><span class="stat-value" id="stat-nochange">—</span></div>
-        <div class="stat-tile"><span class="stat-label">Değişiklik bulundu</span><span class="stat-value" id="stat-changed">—</span></div>
-        <div class="stat-tile"><span class="stat-label">Uyarılar</span><span class="stat-value" id="stat-warnings">—</span></div>
-        <div class="stat-tile"><span class="stat-label">Kaynak hataları</span><span class="stat-value" id="stat-unreachable">—</span></div>
-        <div class="stat-tile"><span class="stat-label">Manuel kontrol gerekli</span><span class="stat-value" id="stat-manual">—</span></div>
+        <div class="stat-tile stat-tile-meta"><span class="stat-label">Son kontrol zamanı</span><span class="stat-value" id="stat-last-run">—</span></div>
+        <div class="stat-tile stat-tile-meta"><span class="stat-label">Kontrol edilen ürün</span><span class="stat-value" id="stat-checked">—</span></div>
+        <div class="stat-tile stat-tile-ok"><span class="stat-label">Otomatik doğrulandı — değişiklik yok</span><span class="stat-value" id="stat-nochange">—</span></div>
+        <div class="stat-tile stat-tile-pending"><span class="stat-label">Değişiklik bulundu — onay bekliyor</span><span class="stat-value" id="stat-changed">—</span></div>
+        <div class="stat-tile stat-tile-manual"><span class="stat-label">Manuel kontrol gerekli</span><span class="stat-value" id="stat-manual">—</span></div>
+        <div class="stat-tile stat-tile-error"><span class="stat-label">Kaynağa ulaşılamadı</span><span class="stat-value" id="stat-unreachable">—</span></div>
       </div>
+      <p class="muted" id="check-summary-sentence"></p>
 
       <div class="table-wrap">
         <table id="daily-check-table">
@@ -81,6 +81,30 @@
           </thead>
           <tbody id="daily-check-tbody">
             <tr><td colspan="6" class="muted">Yükleniyor…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Kabul Edilmiş Farklar -->
+    <section class="card">
+      <h2>Kabul Edilmiş Farklar</h2>
+      <p class="muted">Gerçek bir oran değişikliği olmadığı için "Bu farkı kabul et" ile onaylanmış, kaynak-vs-kayıtlı veri farkları. Kaynaktaki değer bu haliyle kaldığı sürece bir daha yeni onay talebi açılmaz; yalnızca son kontrol zamanı ve tekrar sayısı güncellenir. Kaynaktaki değer gerçekten değişirse otomatik olarak yeniden uyarı üretilir.</p>
+      <div class="table-wrap">
+        <table id="accepted-diffs-table">
+          <thead>
+            <tr>
+              <th>Banka / Ürün</th>
+              <th>Ham kaynak değeri</th>
+              <th>Normalize edilmiş (uygulamada kullanılan) değer</th>
+              <th>Gerekçe</th>
+              <th>Kabul eden / tarih</th>
+              <th>Tekrar sayısı</th>
+              <th>Son görülme</th>
+            </tr>
+          </thead>
+          <tbody id="accepted-diffs-tbody">
+            <tr><td colspan="7" class="muted">Yükleniyor…</td></tr>
           </tbody>
         </table>
       </div>
@@ -202,6 +226,23 @@
     <h2>Ürün Notu</h2>
     <p id="note-dialog-text"></p>
     <button type="button" id="note-dialog-close" class="secondary">Kapat</button>
+  </dialog>
+
+  <!-- "Bu farkı kabul et" gerekçe penceresi -->
+  <dialog id="accept-diff-dialog" class="note-dialog">
+    <h2>Bu Farkı Kabul Et</h2>
+    <p class="muted">Bu, kaynak sayfadaki değeri kayıtlı veriye YAZMAZ — yalnızca "bu fark gerçek bir oran değişikliği değil, biliniyor" der ve aynı fark bir daha "onay bekliyor" olarak açılmaz. Kaynaktaki değer gerçekten değişirse otomasyon yeniden uyarır.</p>
+    <div id="accept-diff-values" class="proposal-fields" style="margin-bottom:12px;"></div>
+    <form id="accept-diff-form">
+      <label>Gerekçe (zorunlu)
+        <input type="text" id="accept-diff-reason" required placeholder="ör. Bant sınırındaki 1 TL'lik fark, sitenin tablo yuvarlaması — oran değişmedi." />
+      </label>
+      <div class="button-row" style="margin-top:10px;">
+        <button type="submit" id="accept-diff-submit">Kabul Et</button>
+        <button type="button" id="accept-diff-cancel" class="secondary">İptal</button>
+      </div>
+      <p id="accept-diff-error" class="error-text" hidden></p>
+    </form>
   </dialog>
 
   <!-- Manuel düzeltme (doğrudan yayınla) penceresi -->

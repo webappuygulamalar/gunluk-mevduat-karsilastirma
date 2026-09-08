@@ -146,7 +146,7 @@ document.getElementById("denied-logout").addEventListener("click", logout);
 // ---------------------------------------------------------------------------
 
 async function loadAll() {
-  await Promise.all([loadActiveRates(), loadRequests(), loadAuditLog(), loadDailyCheck()]);
+  await Promise.all([loadActiveRates(), loadRequests(), loadAuditLog(), loadDailyCheck(), loadAcceptedDiffs()]);
 }
 
 async function loadActiveRates() {
@@ -575,19 +575,39 @@ async function loadAuditLog() {
 // Günlük Kontrol ve Uyarılar
 // ---------------------------------------------------------------------------
 
+// Dört net kategori (görev talimatı gereği "11/11 kontrol edildi" tek başına
+// bir başarı ifadesi değildir — her kategori ayrı sayılır):
+//   1) Otomatik doğrulandı — değişiklik yok  (no_change, accepted_difference)
+//   2) Değişiklik bulundu — onay bekliyor    (rate_changed)
+//   3) Manuel kontrol gerekli                (manual_required, parse_error)
+//   4) Kaynağa ulaşılamadı                   (unreachable)
 const FINDING_STATUS_LABEL = {
-  no_change: "Değişiklik yok",
+  no_change: "Otomatik doğrulandı — değişiklik yok",
+  accepted_difference: "Otomatik doğrulandı — değişiklik yok",
   rate_changed: "Değişiklik bulundu — onay bekliyor",
-  unreachable: "Kaynağa erişilemedi",
-  parse_error: "Otomatik doğrulanamadı — manuel kontrol gerekli",
-  manual_required: "Otomatik doğrulanamadı — manuel kontrol gerekli",
+  unreachable: "Kaynağa ulaşılamadı",
+  parse_error: "Manuel kontrol gerekli",
+  manual_required: "Manuel kontrol gerekli",
   not_attempted: "Henüz kontrol edilmedi",
+};
+
+const CATEGORY_OF_FINDING = {
+  no_change: "ok",
+  accepted_difference: "ok",
+  rate_changed: "pending",
+  parse_error: "manual",
+  manual_required: "manual",
+  unreachable: "unreachable",
 };
 
 function fmtDateTime(iso) {
   return iso ? new Date(iso).toLocaleString("tr-TR") : "—";
 }
 
+// Bir kaynağın birden fazla bulgusu olabilir (ör. birden çok bant değişmiş);
+// gösterilecek TEK durum, önem sırasına göre belirlenir (Edge Function'daki
+// aynı öncelik sırasıyla tutarlı): rate_changed > parse_error/unreachable >
+// manual_required > accepted_difference/no_change.
 function dailyCheckStatusOf(findingsForSource) {
   if (!findingsForSource || findingsForSource.length === 0) return "not_attempted";
   const types = findingsForSource.map((f) => f.finding_type);
@@ -595,6 +615,7 @@ function dailyCheckStatusOf(findingsForSource) {
   if (types.includes("parse_error")) return "parse_error";
   if (types.includes("unreachable")) return "unreachable";
   if (types.includes("manual_required")) return "manual_required";
+  if (types.includes("accepted_difference")) return "accepted_difference";
   return "no_change";
 }
 
@@ -606,6 +627,14 @@ function fmtBandShort(v) {
       ? `bakiyenin %${numberFmt.format(v.vadesiz_oran ?? 0)}'i`
       : fmtMoney(v.vadesizde_kalacak);
   return `${fmtMoney(v.alt_limit)}–${fmtMoney(v.ust_limit)} · ${oran} · vadesiz: ${vadesiz}`;
+}
+
+function renderRawEvidence(raw) {
+  if (!raw || Object.keys(raw).length === 0) return "";
+  const dl = Object.entries(raw)
+    .map(([label, value]) => `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd>`)
+    .join("");
+  return `<details class="raw-evidence-box"><summary>Ham kaynak değerini göster</summary><dl>${dl}</dl></details>`;
 }
 
 async function loadDailyCheck() {
@@ -656,7 +685,7 @@ async function loadDailyCheck() {
     const { data: findingsData } = await client
       .from("rate_check_findings")
       .select(
-        "id, bank_source_id, bank_id, finding_type, current_value, observed_value, evidence_url, detail, rate_change_request_id, rate_change_requests(id, status)"
+        "id, bank_source_id, bank_id, finding_type, current_value, observed_value, evidence_url, detail, fingerprint, raw_evidence, rate_change_request_id, rate_change_requests(id, status)"
       )
       .eq("run_id", lastRun.id);
     findings = findingsData || [];
@@ -668,18 +697,33 @@ async function loadDailyCheck() {
     findingsBySource.get(f.bank_source_id).push(f);
   }
 
-  // Üst özet
+  // Üst özet — dört net kategori (bir kaynak birden fazla bulgu üretmiş
+  // olsa bile, o kaynak yalnızca dailyCheckStatusOf'un belirlediği TEK
+  // (en yüksek öncelikli) kategoriye sayılır; toplam = kaynak sayısı).
   statLastRun.textContent = lastRun ? fmtDateTime(lastRun.started_at) : "Henüz çalışmadı";
-  statChecked.textContent = lastRun ? String(lastRun.sources_checked) : "—";
-  const counts = { no_change: 0, rate_changed: 0, unreachable: 0, parse_error: 0, manual_required: 0 };
-  for (const f of findings) {
-    if (counts[f.finding_type] !== undefined) counts[f.finding_type]++;
+  statChecked.textContent = sources.length ? String(sources.length) : "—";
+
+  const categoryCounts = { ok: 0, pending: 0, manual: 0, unreachable: 0, none: 0 };
+  for (const source of sources) {
+    const status = dailyCheckStatusOf(findingsBySource.get(source.id));
+    const category = status === "not_attempted" ? "none" : CATEGORY_OF_FINDING[status] ?? "none";
+    categoryCounts[category]++;
   }
-  statNoChange.textContent = String(counts.no_change);
-  statChanged.textContent = String(counts.rate_changed);
-  statWarnings.textContent = String(counts.parse_error);
-  statUnreachable.textContent = String(counts.unreachable);
-  statManual.textContent = String(counts.manual_required);
+  statNoChange.textContent = String(categoryCounts.ok);
+  statChanged.textContent = String(categoryCounts.pending);
+  statManual.textContent = String(categoryCounts.manual);
+  statUnreachable.textContent = String(categoryCounts.unreachable);
+
+  const summarySentenceEl = document.getElementById("check-summary-sentence");
+  if (summarySentenceEl) {
+    const parts = [`${sources.length} ürün kontrol edildi`];
+    parts.push(`${categoryCounts.ok} otomatik doğrulandı`);
+    parts.push(`${categoryCounts.pending} onay bekliyor`);
+    parts.push(`${categoryCounts.manual} manuel kontrol gerekli`);
+    parts.push(`${categoryCounts.unreachable} kaynağa ulaşılamadı`);
+    if (categoryCounts.none > 0) parts.push(`${categoryCounts.none} henüz kontrol edilmedi`);
+    summarySentenceEl.textContent = parts.join(", ") + ".";
+  }
 
   if (sources.length === 0) {
     dailyCheckTbody.innerHTML = `<tr><td colspan="6" class="muted">Henüz kaynak tanımlı değil.</td></tr>`;
@@ -705,14 +749,17 @@ async function loadDailyCheck() {
         const reqStatus = f.rate_change_requests ? f.rate_change_requests.status : null;
         const oldNew = `
           <div class="diff-box">
-            <span class="diff-old">${escapeHtml(fmtBandShort(f.current_value))}</span>
-            <span class="diff-new">${escapeHtml(fmtBandShort(f.observed_value))}</span>
-          </div>`;
+            <div><span class="muted">Kayıtlı (normalize edilmiş):</span> <span class="diff-old">${escapeHtml(fmtBandShort(f.current_value))}</span></div>
+            <div><span class="muted">Kaynakta bulunan (normalize edilmiş):</span> <span class="diff-new">${escapeHtml(fmtBandShort(f.observed_value))}</span></div>
+          </div>
+          ${renderRawEvidence(f.raw_evidence)}`;
         let actions = "—";
         if (reqStatus === "pending" && f.rate_change_request_id) {
           actions = `
             <button type="button" class="link-btn" data-req-action="approve" data-req-id="${f.rate_change_request_id}">Onayla ve Yayınla</button>
             <button type="button" class="link-btn danger" data-req-action="reject" data-req-id="${f.rate_change_request_id}">Reddet</button>
+            <button type="button" class="link-btn" data-accept-diff-btn data-req-id="${f.rate_change_request_id}"
+              data-current="${escapeHtml(fmtBandShort(f.current_value))}" data-observed="${escapeHtml(fmtBandShort(f.observed_value))}">Bu farkı kabul et</button>
           `;
         } else if (reqStatus) {
           actions = `<span class="muted">${escapeHtml(reqStatus)}</span>`;
@@ -723,8 +770,24 @@ async function loadDailyCheck() {
     } else if (status === "parse_error" || status === "unreachable" || status === "manual_required") {
       const detail = sourceFindings.map((f) => f.detail).filter(Boolean).join(" ");
       foundCell = `<div class="warning-box">${escapeHtml(detail || FINDING_STATUS_LABEL[status])}</div>`;
-    } else if (status === "no_change") {
-      foundCell = `<span class="muted">—</span>`;
+    } else if (status === "no_change" || status === "accepted_difference") {
+      const acceptedFindings = sourceFindings.filter((f) => f.finding_type === "accepted_difference");
+      if (acceptedFindings.length > 0) {
+        foundCell = acceptedFindings
+          .map(
+            (f) => `
+              <div class="daily-check-finding">
+                <div class="diff-box">
+                  <div><span class="muted">Kayıtlı (normalize edilmiş):</span> ${escapeHtml(fmtBandShort(f.current_value))}</div>
+                  <div><span class="muted">Kaynakta bulunan (kabul edilmiş fark):</span> ${escapeHtml(fmtBandShort(f.observed_value))}</div>
+                </div>
+                ${renderRawEvidence(f.raw_evidence)}
+              </div>`
+          )
+          .join("");
+      } else {
+        foundCell = `<span class="muted">—</span>`;
+      }
     }
 
     tr.innerHTML = `
@@ -740,6 +803,12 @@ async function loadDailyCheck() {
 }
 
 dailyCheckTbody.addEventListener("click", async (e) => {
+  const acceptBtn = e.target.closest("button[data-accept-diff-btn]");
+  if (acceptBtn) {
+    openAcceptDiffDialog(acceptBtn.dataset.reqId, acceptBtn.dataset.current, acceptBtn.dataset.observed);
+    return;
+  }
+
   const btn = e.target.closest("button[data-req-action]");
   if (!btn) return;
   const requestId = btn.dataset.reqId;
@@ -760,6 +829,114 @@ dailyCheckTbody.addEventListener("click", async (e) => {
   showToast(action === "approve" ? "Değişiklik onaylandı ve yayınlandı." : "Değişiklik reddedildi.", false);
   await loadAll();
 });
+
+// ---------------------------------------------------------------------------
+// "Bu farkı kabul et" — accept_rate_difference RPC'sinin tek çağırıcısı.
+// Kayıtlı veriyi DEĞİŞTİRMEZ; yalnızca bu bant + bu gözlemlenen değeri
+// "gerçek bir oran değişikliği değil" olarak işaretler ve talebi kapatır.
+// ---------------------------------------------------------------------------
+
+const acceptDiffDialog = document.getElementById("accept-diff-dialog");
+const acceptDiffForm = document.getElementById("accept-diff-form");
+const acceptDiffError = document.getElementById("accept-diff-error");
+const acceptDiffValues = document.getElementById("accept-diff-values");
+let acceptDiffContext = null; // { requestId }
+
+function openAcceptDiffDialog(requestId, currentText, observedText) {
+  acceptDiffContext = { requestId };
+  acceptDiffValues.innerHTML = `
+    <dt>Kayıtlı (normalize edilmiş)</dt><dd>${escapeHtml(currentText || "—")}</dd>
+    <dt>Kaynakta bulunan (normalize edilmiş)</dt><dd>${escapeHtml(observedText || "—")}</dd>
+  `;
+  document.getElementById("accept-diff-reason").value = "";
+  acceptDiffError.hidden = true;
+  acceptDiffDialog.showModal();
+}
+
+document.getElementById("accept-diff-cancel").addEventListener("click", () => {
+  acceptDiffDialog.close();
+  acceptDiffContext = null;
+});
+
+acceptDiffForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!acceptDiffContext) return;
+
+  const reason = document.getElementById("accept-diff-reason").value.trim();
+  if (!reason) {
+    acceptDiffError.textContent = "Gerekçe zorunludur.";
+    acceptDiffError.hidden = false;
+    return;
+  }
+
+  const submitBtn = document.getElementById("accept-diff-submit");
+  submitBtn.disabled = true;
+
+  const { error } = await client.rpc("accept_rate_difference", {
+    p_request_id: acceptDiffContext.requestId,
+    p_reason: reason,
+  });
+
+  submitBtn.disabled = false;
+
+  if (error) {
+    acceptDiffError.textContent = "Hata: " + error.message;
+    acceptDiffError.hidden = false;
+    return;
+  }
+
+  acceptDiffDialog.close();
+  acceptDiffContext = null;
+  showToast("Fark kabul edildi — bir daha aynı fark için yeni talep açılmayacak.", false);
+  await loadAll();
+});
+
+// ---------------------------------------------------------------------------
+// Kabul Edilmiş Farklar tablosu
+// ---------------------------------------------------------------------------
+
+async function loadAcceptedDiffs() {
+  const tbody = document.getElementById("accepted-diffs-tbody");
+  if (!tbody) return;
+  tbody.innerHTML = `<tr><td colspan="7" class="muted">Yükleniyor…</td></tr>`;
+
+  const { data, error } = await client
+    .from("accepted_rate_differences")
+    .select(
+      "id, raw_evidence, normalized_value, normalization_reason, accepted_at, occurrence_count, last_checked_at, banks(name), profiles(email)"
+    )
+    .order("last_checked_at", { ascending: false });
+
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="7" class="error-text">Hata: ${error.message}</td></tr>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="muted">Henüz kabul edilmiş bir fark yok.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = "";
+  for (const d of data) {
+    const tr = document.createElement("tr");
+    const rawHtml = d.raw_evidence
+      ? Object.entries(d.raw_evidence)
+          .map(([k, v]) => `${escapeHtml(k)}: <strong>${escapeHtml(v)}</strong>`)
+          .join("<br>")
+      : "—";
+    tr.innerHTML = `
+      <td>${escapeHtml(d.banks ? d.banks.name : "")}</td>
+      <td class="note-cell">${rawHtml}</td>
+      <td class="note-cell">${escapeHtml(fmtBandShort(d.normalized_value))}</td>
+      <td class="note-cell">${escapeHtml(d.normalization_reason)}</td>
+      <td>${escapeHtml(d.profiles ? d.profiles.email : "—")}<br><span class="muted">${fmtDateTime(d.accepted_at)}</span></td>
+      <td>${d.occurrence_count}</td>
+      <td>${fmtDateTime(d.last_checked_at)}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
 
 runCheckBtn.addEventListener("click", async () => {
   runCheckBtn.disabled = true;
