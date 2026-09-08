@@ -614,6 +614,7 @@ async function loadDailyCheck() {
   const { data: lastRun } = await client
     .from("rate_check_runs")
     .select("id, started_at, finished_at, status, sources_checked, sources_unreachable, findings_created, dry_run")
+    .eq("dry_run", false)
     .order("started_at", { ascending: false })
     .limit(1)
     .maybeSingle();
