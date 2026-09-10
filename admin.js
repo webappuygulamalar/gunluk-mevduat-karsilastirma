@@ -33,11 +33,8 @@ const proposalError = document.getElementById("proposal-error");
 
 const runCheckBtn = document.getElementById("run-check-btn");
 const dailyCheckTbody = document.getElementById("daily-check-tbody");
-const statLastRun = document.getElementById("stat-last-run");
-const statChecked = document.getElementById("stat-checked");
 const statNoChange = document.getElementById("stat-nochange");
 const statChanged = document.getElementById("stat-changed");
-const statWarnings = document.getElementById("stat-warnings");
 const statUnreachable = document.getElementById("stat-unreachable");
 const statManual = document.getElementById("stat-manual");
 
@@ -152,12 +149,18 @@ async function loadAll() {
 async function loadActiveRates() {
   ratesTbody.innerHTML = `<tr><td colspan="8" class="muted">Yükleniyor…</td></tr>`;
 
+  // banks!inner + is_enabled=true: pasifleştirilmiş ürünler (ör. mükerrer
+  // olduğu için kapatılan "Odeabank Oksijen Hoş Geldin") bu "aktif oranlar"
+  // tablosunda görünmemeli — başlık yalnızca aktif ürünleri ifade ediyor.
+  // Geçmiş/denetim tabloları (Değişiklik Talepleri, Audit Log) bu filtreden
+  // ETKİLENMEZ, ayrı sorgulardır.
   const { data, error } = await client
     .from("bank_rates")
     .select(
-      "id, bank_id, alt_limit, ust_limit, vadesizde_kalacak, yillik_brut_oran, note, gerekli_fon_bakiyesi, vadesiz_hesaplama_tipi, vadesiz_oran, banks(name)"
+      "id, bank_id, alt_limit, ust_limit, vadesizde_kalacak, yillik_brut_oran, note, gerekli_fon_bakiyesi, vadesiz_hesaplama_tipi, vadesiz_oran, banks!inner(name, is_enabled)"
     )
     .eq("is_active", true)
+    .eq("banks.is_enabled", true)
     .order("name", { referencedTable: "banks" })
     .order("alt_limit");
 
@@ -572,51 +575,45 @@ async function loadAuditLog() {
 }
 
 // ---------------------------------------------------------------------------
-// Günlük Kontrol ve Uyarılar
+// Oran Kontrolü
 // ---------------------------------------------------------------------------
+//
+// Bu bölüm bilerek TEKNİK olmayan bir dille yazıldı: ekranda "database",
+// "RPC", "JSON", "normalize", "fingerprint" gibi ifadeler YOKTUR. Yalnızca
+// 5 kullanıcı-dostu durum kullanılır; ham/teknik içerik (kaynak tablo, aday
+// oranlar, ham metin) yalnızca "Detay" düğmesiyle açılan modalda gösterilir.
 
-// Dört net kategori (görev talimatı gereği "11/11 kontrol edildi" tek başına
-// bir başarı ifadesi değildir — her kategori ayrı sayılır):
-//   1) Otomatik doğrulandı — değişiklik yok  (no_change, accepted_difference)
-//   2) Değişiklik bulundu — onay bekliyor    (rate_changed)
-//   3) Manuel kontrol gerekli                (manual_required, parse_error)
-//   4) Kaynağa ulaşılamadı                   (unreachable)
-const FINDING_STATUS_LABEL = {
-  no_change: "Otomatik doğrulandı — değişiklik yok",
-  accepted_difference: "Otomatik doğrulandı — değişiklik yok",
-  rate_changed: "Değişiklik bulundu — onay bekliyor",
+const RK_LABEL = {
+  nochange: "Değişiklik yok",
+  pending: "Onay bekliyor",
+  approved: "Güncellendi",
+  manual: "Manuel kontrol",
   unreachable: "Kaynağa ulaşılamadı",
-  parse_error: "Manuel kontrol gerekli",
-  manual_required: "Manuel kontrol gerekli",
-  not_attempted: "Henüz kontrol edilmedi",
 };
-
-const CATEGORY_OF_FINDING = {
-  no_change: "ok",
-  accepted_difference: "ok",
-  rate_changed: "pending",
-  parse_error: "manual",
-  manual_required: "manual",
-  unreachable: "unreachable",
+const RK_BADGE_CLASS = {
+  nochange: "rk-badge-nochange",
+  pending: "rk-badge-pending",
+  approved: "rk-badge-approved",
+  manual: "rk-badge-manual",
+  unreachable: "rk-badge-unreachable",
 };
 
 function fmtDateTime(iso) {
   return iso ? new Date(iso).toLocaleString("tr-TR") : "—";
 }
 
-// Bir kaynağın birden fazla bulgusu olabilir (ör. birden çok bant değişmiş);
-// gösterilecek TEK durum, önem sırasına göre belirlenir (Edge Function'daki
-// aynı öncelik sırasıyla tutarlı): rate_changed > parse_error/unreachable >
-// manual_required > accepted_difference/no_change.
-function dailyCheckStatusOf(findingsForSource) {
-  if (!findingsForSource || findingsForSource.length === 0) return "not_attempted";
-  const types = findingsForSource.map((f) => f.finding_type);
-  if (types.includes("rate_changed")) return "rate_changed";
-  if (types.includes("parse_error")) return "parse_error";
-  if (types.includes("unreachable")) return "unreachable";
-  if (types.includes("manual_required")) return "manual_required";
-  if (types.includes("accepted_difference")) return "accepted_difference";
-  return "no_change";
+// Türkçe biçim: "%44,00" (yüzde işareti önce, boşluksuz).
+function fmtPercentSimple(n) {
+  return n === null || n === undefined ? "—" : "%" + percentFmt.format(n * 100);
+}
+
+// Türkçe biçim: "250.001–500.000 TL". Açık uçlu (sentinel) üst sınırlar
+// "X TL ve üzeri" olarak gösterilir.
+function fmtRangeTR(alt, ust) {
+  if (alt === null || alt === undefined || ust === null || ust === undefined) return "—";
+  const altS = numberFmt.format(alt);
+  if (Number(ust) >= 9999999999) return `${altS} TL ve üzeri`;
+  return `${altS}–${numberFmt.format(ust)} TL`;
 }
 
 function fmtBandShort(v) {
@@ -638,7 +635,8 @@ function renderRawEvidence(raw) {
 }
 
 // "En yüksek resmi aday oranı" politikası denetim izi: kaynak tablo, o
-// satırdaki TÜM aday oranlar ve hangisinin/hangi koşulla seçildiği.
+// satırdaki TÜM aday oranlar ve hangisinin/hangi koşulla seçildiği. Bu
+// bilgi yalnızca Detay modalında gösterilir, ana tabloda ASLA.
 function renderRateSelection(f) {
   if (!f.selected_rate_column && !f.observed_rate_candidates && !f.source_table_name) return "";
   const parts = [];
@@ -657,200 +655,352 @@ function renderRateSelection(f) {
   return `<dl class="proposal-fields" style="margin-top:8px;">${parts.join("")}</dl>`;
 }
 
-async function loadDailyCheck() {
-  dailyCheckTbody.innerHTML = `<tr><td colspan="6" class="muted">Yükleniyor…</td></tr>`;
+// Aksiyon alınabilecek bir bant yoksa (tüm rate_changed bulguları ya yok, ya
+// da zaten reddedilmiş), bankanın DÜŞTÜĞÜ geri dönüş kategorisi — öncelik
+// sırası: parse_error/manual_required > unreachable > (varsayılan) nochange.
+function bankFallbackCategory(findingsForSource) {
+  if (!findingsForSource || findingsForSource.length === 0) return "nochange";
+  const types = findingsForSource.map((f) => f.finding_type);
+  if (types.includes("parse_error") || types.includes("manual_required")) return "manual";
+  if (types.includes("unreachable")) return "unreachable";
+  return "nochange";
+}
 
+let dailyDetailContent = new Map(); // finding.id -> { title, html }
+let dailyCheckRows = []; // ekranda gösterilecek satırlar (bkz. renderDailyCheckTable)
+let lastRunInfo = null; // "Gelişmiş Ayrıntılar > Teknik Çalışma Detayları" için
+
+async function loadDailyCheck() {
+  dailyCheckTbody.innerHTML = `<tr><td colspan="7" class="muted">Yükleniyor…</td></tr>`;
+
+  const nowIso = new Date().toISOString();
+
+  // is_test=false + status<>'skipped' + started_at<=now(): sentetik test
+  // kayıtları (bkz. 20260910220000 migration) ve gelecek tarihli/atlanan
+  // kayıtlar "Son kontrol" / "Son başarılı kontrol" / teknik ayrıntı
+  // panelinin yerine ASLA geçmez.
   const { data: lastRun } = await client
     .from("rate_check_runs")
-    .select("id, started_at, finished_at, status, sources_checked, sources_unreachable, findings_created, dry_run")
+    .select(
+      "id, started_at, finished_at, status, sources_checked, sources_unreachable, findings_created, dry_run, triggered_by, verified_products, pending_products, manual_products, duration_ms, error_summary, notes"
+    )
     .eq("dry_run", false)
+    .eq("is_test", false)
+    .neq("status", "skipped")
+    .lte("started_at", nowIso)
     .order("started_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
+  const { data: lastSuccess } = await client
+    .from("rate_check_runs")
+    .select("id, started_at")
+    .eq("dry_run", false)
+    .eq("is_test", false)
+    .gt("sources_checked", 0)
+    .in("status", ["success", "partial_failure"])
+    .lte("started_at", nowIso)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  lastRunInfo = lastRun || null;
+  const lastRunTextEl = document.getElementById("check-last-run-text");
+  if (lastRunTextEl) {
+    lastRunTextEl.textContent = "Son kontrol: " + (lastRun ? fmtDateTime(lastRun.started_at) : "henüz çalışmadı");
+  }
+  const lastSuccessTextEl = document.getElementById("check-last-success-text");
+  if (lastSuccessTextEl) {
+    lastSuccessTextEl.textContent = "Son başarılı kontrol: " + (lastSuccess ? fmtDateTime(lastSuccess.started_at) : "henüz yok");
+  }
+  const healthBanner = document.getElementById("check-health-banner");
+  if (healthBanner) {
+    // "Sessiz başarısızlık" bir daha görünmesin: son çalışma failure ise
+    // üstte açık bir kırmızı uyarı gösterilir. (Bir retry "gereksiz, ana
+    // kontrol zaten başarılıydı" diye atlandığında status='success' olarak
+    // kaydedilir — bu YANLIŞLIKLA başarısızlık sayılmaz.) Teknik ayrıntı
+    // (error_summary) yalnızca Gelişmiş Ayrıntılar'da kalır.
+    const lastRunFailed = !!lastRun && lastRun.status === "failure";
+    if (lastRunFailed) {
+      healthBanner.hidden = false;
+      const saatText = fmtDateTime(lastRun.started_at);
+      healthBanner.textContent = `${saatText} otomatik kontrolü tamamlanamadı.`;
+    } else {
+      healthBanner.hidden = true;
+      healthBanner.textContent = "";
+    }
+  }
+  renderRunDetailTechnical();
+
   // banks!inner + is_enabled=true: pasifleştirilmiş ürünler (ör. kullanıcı
-  // kararıyla kapatılan mükerrer Odeabank ürünü) günlük kontrol panelinde
-  // hiç görünmesin — Edge Function da aynı filtreyle bu kaynakları atlıyor.
+  // kararıyla kapatılan mükerrer Odeabank ürünü) bu ekranda hiç görünmesin.
   const { data: sources, error: sourcesErr } = await client
     .from("bank_sources")
-    .select(
-      "id, bank_id, source_url, requires_manual_check, last_checked_at, last_check_status, banks!inner(name, is_enabled)"
-    )
+    .select("id, bank_id, source_url, banks!inner(name, is_enabled)")
     .eq("banks.is_enabled", true)
     .order("created_at", { ascending: true });
 
   if (sourcesErr || !sources) {
-    dailyCheckTbody.innerHTML = `<tr><td colspan="6" class="error-text">Hata: ${sourcesErr ? sourcesErr.message : "bank_sources okunamadı"}</td></tr>`;
+    dailyCheckTbody.innerHTML = `<tr><td colspan="7" class="error-text">Hata: ${sourcesErr ? sourcesErr.message : "bank_sources okunamadı"}</td></tr>`;
     return;
   }
 
-  const { data: currentRateRows } = await client
-    .from("bank_rates")
-    .select("bank_id, yillik_brut_oran")
-    .eq("is_active", true);
+  // Onay bekleyen satırlar DOĞRUDAN güncel gerçek kuyruktan (rate_change_
+  // requests.status='pending') okunur — HANGİ çalışmanın onu ürettiğine
+  // bakılmaz. Böylece bir talep, onu üreten çalışma artık "son çalışma"
+  // olmasa bile, çözülene kadar tabloda görünmeye devam eder.
+  const { data: pendingRequests, error: pendingErr } = await client
+    .from("rate_change_requests")
+    .select("id, bank_id, bank_rate_id, proposed_data, previous_data, banks!inner(name, is_enabled)")
+    .eq("status", "pending")
+    .eq("banks.is_enabled", true);
 
-  const ratesByBank = new Map();
-  for (const r of currentRateRows || []) {
-    if (!ratesByBank.has(r.bank_id)) ratesByBank.set(r.bank_id, []);
-    ratesByBank.get(r.bank_id).push(Number(r.yillik_brut_oran));
+  if (pendingErr) {
+    dailyCheckTbody.innerHTML = `<tr><td colspan="7" class="error-text">Hata: ${pendingErr.message}</td></tr>`;
+    return;
   }
 
-  function summarizeCurrentRate(bankId) {
-    const rates = ratesByBank.get(bankId);
-    if (!rates || rates.length === 0) return "—";
-    const min = Math.min(...rates);
-    const max = Math.max(...rates);
-    const range = min === max ? fmtPercent(min) : `${fmtPercent(min)} – ${fmtPercent(max)}`;
-    return rates.length > 1 ? `${range} (${rates.length} bant)` : range;
+  // Detay modalında zengin ham kanıt (raw_evidence, aday oranlar vb.)
+  // gösterebilmek için ilgili bulgular AYRICA çekilir — ama bir talebin
+  // PENDING SAYILIP SAYILMAYACAĞI asla buna bağlı değildir (talep zaten
+  // yukarıdaki sorgudan geliyor).
+  const pendingIds = (pendingRequests ?? []).map((r) => r.id);
+  let findingByRequestId = new Map();
+  if (pendingIds.length > 0) {
+    const { data: relatedFindings } = await client
+      .from("rate_check_findings")
+      .select(
+        "id, rate_change_request_id, current_value, observed_value, raw_evidence, source_table_name, selected_rate_column, selected_rate_condition, observed_rate_candidates"
+      )
+      .in("rate_change_request_id", pendingIds);
+    for (const f of relatedFindings ?? []) {
+      findingByRequestId.set(f.rate_change_request_id, f);
+    }
   }
+
+  const sourceByBankId = new Map(sources.map((s) => [s.bank_id, s]));
+  const bankIdsWithPending = new Set((pendingRequests ?? []).map((r) => r.bank_id));
 
   let findings = [];
   if (lastRun) {
     const { data: findingsData } = await client
       .from("rate_check_findings")
-      .select(
-        "id, bank_source_id, bank_id, finding_type, current_value, observed_value, evidence_url, detail, fingerprint, raw_evidence, source_table_name, selected_rate_column, selected_rate_condition, observed_rate_candidates, rate_change_request_id, rate_change_requests(id, status)"
-      )
+      .select("id, bank_source_id, bank_id, finding_type")
       .eq("run_id", lastRun.id);
     findings = findingsData || [];
   }
-
   const findingsBySource = new Map();
   for (const f of findings) {
     if (!findingsBySource.has(f.bank_source_id)) findingsBySource.set(f.bank_source_id, []);
     findingsBySource.get(f.bank_source_id).push(f);
   }
 
-  // Üst özet — dört net kategori (bir kaynak birden fazla bulgu üretmiş
-  // olsa bile, o kaynak yalnızca dailyCheckStatusOf'un belirlediği TEK
-  // (en yüksek öncelikli) kategoriye sayılır; toplam = kaynak sayısı).
-  statLastRun.textContent = lastRun ? fmtDateTime(lastRun.started_at) : "Henüz çalışmadı";
-  statChecked.textContent = sources.length ? String(sources.length) : "—";
+  dailyDetailContent = new Map();
+  const pendingRows = [];
+  const summaryRows = [];
 
-  const categoryCounts = { ok: 0, pending: 0, manual: 0, unreachable: 0, none: 0 };
+  let countNoChange = 0;
+  let countPendingBands = 0; // "Onay bekleyen" ARALIK (bant) sayısıdır, banka sayısı DEĞİL
+  let countManual = 0;
+  let countUnreachable = 0;
+
+  // 1) Onay bekleyen satırlar — her PENDING talep için bir satır.
+  for (const req of pendingRequests ?? []) {
+    const bankName = req.banks ? req.banks.name : req.bank_id;
+    const source = sourceByBankId.get(req.bank_id);
+    const sourceUrl = source ? source.source_url : "#";
+    const finding = findingByRequestId.get(req.id) ?? null;
+    countPendingBands++;
+
+    pendingRows.push({
+      rkStatus: "pending",
+      bankName,
+      sourceUrl,
+      requestId: req.id,
+      findingId: req.id, // dailyDetailContent bu değerle anahtarlanır (finding olmasa da çalışır)
+      alt: req.proposed_data ? req.proposed_data.alt_limit : null,
+      ust: req.proposed_data ? req.proposed_data.ust_limit : null,
+      oldRate: req.previous_data ? req.previous_data.yillik_brut_oran : null,
+      newRate: req.proposed_data ? req.proposed_data.yillik_brut_oran : null,
+    });
+
+    const currentVal = finding ? finding.current_value : req.previous_data;
+    const observedVal = finding ? finding.observed_value : req.proposed_data;
+    const oldNew = `
+      <div class="diff-box">
+        <div><span class="muted">Kayıtlı:</span> <span class="diff-old">${escapeHtml(fmtBandShort(currentVal))}</span></div>
+        <div><span class="muted">Kaynakta bulunan:</span> <span class="diff-new">${escapeHtml(fmtBandShort(observedVal))}</span></div>
+      </div>
+      ${finding ? renderRateSelection(finding) : ""}
+      ${finding ? renderRawEvidence(finding.raw_evidence) : ""}`;
+    const actionsHtml = `
+      <button type="button" class="link-btn" data-req-action="approve" data-req-id="${req.id}">Onayla ve Yayınla</button>
+      <button type="button" class="link-btn danger" data-req-action="reject" data-req-id="${req.id}">Reddet</button>
+      <button type="button" class="link-btn" data-accept-diff-btn data-req-id="${req.id}"
+        data-current="${escapeHtml(fmtBandShort(currentVal))}" data-observed="${escapeHtml(fmtBandShort(observedVal))}">Bu farkı kabul et</button>
+    `;
+    dailyDetailContent.set(req.id, {
+      title: `${bankName} — ${RK_LABEL.pending}`,
+      html: `<div class="daily-check-finding">${oldNew}<div class="actions-cell">${actionsHtml}</div></div>`,
+    });
+  }
+
+  // 2) Pending talebi OLMAYAN bankalar için tek özet satır — durumu en son
+  // GERÇEK (is_test=false, dry_run=false, status<>'skipped') çalışmanın
+  // bulgularından belirlenir. Bir bankanın pending talebi varsa bu banka
+  // için ayrıca "Değişiklik yok" özeti GÖSTERİLMEZ.
   for (const source of sources) {
-    const status = dailyCheckStatusOf(findingsBySource.get(source.id));
-    const category = status === "not_attempted" ? "none" : CATEGORY_OF_FINDING[status] ?? "none";
-    categoryCounts[category]++;
-  }
-  statNoChange.textContent = String(categoryCounts.ok);
-  statChanged.textContent = String(categoryCounts.pending);
-  statManual.textContent = String(categoryCounts.manual);
-  statUnreachable.textContent = String(categoryCounts.unreachable);
+    if (bankIdsWithPending.has(source.bank_id)) continue;
 
-  const summarySentenceEl = document.getElementById("check-summary-sentence");
-  if (summarySentenceEl) {
-    const parts = [`${sources.length} ürün kontrol edildi`];
-    parts.push(`${categoryCounts.ok} otomatik doğrulandı`);
-    parts.push(`${categoryCounts.pending} onay bekliyor`);
-    parts.push(`${categoryCounts.manual} manuel kontrol gerekli`);
-    parts.push(`${categoryCounts.unreachable} kaynağa ulaşılamadı`);
-    if (categoryCounts.none > 0) parts.push(`${categoryCounts.none} henüz kontrol edilmedi`);
-    summarySentenceEl.textContent = parts.join(", ") + ".";
+    const bankName = source.banks ? source.banks.name : source.bank_id;
+    const sourceFindings = findingsBySource.get(source.id) || [];
+    const rkStatus = bankFallbackCategory(sourceFindings);
+    if (rkStatus === "nochange") countNoChange++;
+    else if (rkStatus === "manual") countManual++;
+    else if (rkStatus === "unreachable") countUnreachable++;
+
+    summaryRows.push({
+      rkStatus,
+      bankName,
+      sourceUrl: source.source_url,
+      requestId: null,
+      findingId: null,
+      alt: null,
+      ust: null,
+      oldRate: null,
+      newRate: null,
+    });
   }
 
-  if (sources.length === 0) {
-    dailyCheckTbody.innerHTML = `<tr><td colspan="6" class="muted">Henüz kaynak tanımlı değil.</td></tr>`;
+  // rate_change_requests sorgusunun dönüş sırası garanti değildir — aynı
+  // bankanın satırları YAN YANA olmazsa tablodaki "banka hücresi tek kez,
+  // ilk satırda" ve "Tümünü seç" grup mantığı bozulur. Önce banka adına,
+  // sonra alt limite göre sıralanır.
+  pendingRows.sort((a, b) => a.bankName.localeCompare(b.bankName, "tr") || (a.alt ?? 0) - (b.alt ?? 0));
+
+  // Onay bekleyen 13 satır ÖNCE gösterilir, ardından özet satırlar.
+  dailyCheckRows = [...pendingRows, ...summaryRows];
+
+  statNoChange.textContent = String(countNoChange);
+  statChanged.textContent = String(countPendingBands);
+  statManual.textContent = String(countManual);
+  statUnreachable.textContent = String(countUnreachable);
+  const statChangedSubEl = document.getElementById("stat-changed-sub");
+  if (statChangedSubEl) {
+    const bankCount = bankIdsWithPending.size;
+    statChangedSubEl.textContent = bankCount > 0 ? `${bankCount} ürün` : "";
+  }
+
+  renderDailyCheckTable();
+}
+
+function renderDailyCheckTable() {
+  if (dailyCheckRows.length === 0) {
+    dailyCheckTbody.innerHTML = `<tr><td colspan="7" class="muted">Henüz kaynak tanımlı değil.</td></tr>`;
     return;
   }
 
-  // Bulunan/önerilen detayları hücrede DEĞİL, ayrı bir modalda gösterilir
-  // (uzun içerik tabloyu taşırıp mobil/masaüstü düzeni bozmasın diye).
-  // Hücrede yalnızca "Uyarıyı Gör" düğmesi olur; tam içerik burada, satırın
-  // kaynak id'siyle anahtarlanmış olarak tutulur.
-  dailyDetailContent.clear();
+  const pendingCountByBank = new Map();
+  for (const row of dailyCheckRows) {
+    if (row.rkStatus === "pending") {
+      pendingCountByBank.set(row.bankName, (pendingCountByBank.get(row.bankName) || 0) + 1);
+    }
+  }
 
   dailyCheckTbody.innerHTML = "";
-  for (const source of sources) {
-    const sourceFindings = findingsBySource.get(source.id) || [];
-    const status = dailyCheckStatusOf(sourceFindings);
-    const bankName = source.banks ? source.banks.name : source.bank_id;
-
+  const seenBanks = new Set();
+  for (const row of dailyCheckRows) {
     const tr = document.createElement("tr");
-    const statusCell = `<span class="status-badge status-${status}">${FINDING_STATUS_LABEL[status]}</span>`;
+    const isFirstOfBank = !seenBanks.has(row.bankName);
+    seenBanks.add(row.bankName);
 
-    let currentCell = escapeHtml(summarizeCurrentRate(source.bank_id));
-    let detailHtml = "";
-
-    if (status === "rate_changed") {
-      const changedFindings = sourceFindings.filter((f) => f.finding_type === "rate_changed");
-      const parts = [];
-      for (const f of changedFindings) {
-        const reqStatus = f.rate_change_requests ? f.rate_change_requests.status : null;
-        const oldNew = `
-          <div class="diff-box">
-            <div><span class="muted">Kayıtlı (normalize edilmiş):</span> <span class="diff-old">${escapeHtml(fmtBandShort(f.current_value))}</span></div>
-            <div><span class="muted">Kaynakta bulunan (normalize edilmiş):</span> <span class="diff-new">${escapeHtml(fmtBandShort(f.observed_value))}</span></div>
-          </div>
-          ${renderRateSelection(f)}
-          ${renderRawEvidence(f.raw_evidence)}`;
-        let actions = "—";
-        if (reqStatus === "pending" && f.rate_change_request_id) {
-          actions = `
-            <button type="button" class="link-btn" data-req-action="approve" data-req-id="${f.rate_change_request_id}">Onayla ve Yayınla</button>
-            <button type="button" class="link-btn danger" data-req-action="reject" data-req-id="${f.rate_change_request_id}">Reddet</button>
-            <button type="button" class="link-btn" data-accept-diff-btn data-req-id="${f.rate_change_request_id}"
-              data-current="${escapeHtml(fmtBandShort(f.current_value))}" data-observed="${escapeHtml(fmtBandShort(f.observed_value))}">Bu farkı kabul et</button>
-          `;
-        } else if (reqStatus) {
-          actions = `<span class="muted">${escapeHtml(reqStatus)}</span>`;
-        }
-        parts.push(`<div class="daily-check-finding">${oldNew}<div class="actions-cell">${actions}</div></div>`);
-      }
-      detailHtml = parts.join("");
-    } else if (status === "parse_error" || status === "unreachable" || status === "manual_required") {
-      const detail = sourceFindings.map((f) => f.detail).filter(Boolean).join(" ");
-      detailHtml = `<div class="warning-box">${escapeHtml(detail || FINDING_STATUS_LABEL[status])}</div>`;
-    } else if (status === "no_change" || status === "accepted_difference") {
-      const acceptedFindings = sourceFindings.filter((f) => f.finding_type === "accepted_difference");
-      if (acceptedFindings.length > 0) {
-        detailHtml = acceptedFindings
-          .map(
-            (f) => `
-              <div class="daily-check-finding">
-                <div class="diff-box">
-                  <div><span class="muted">Kayıtlı (normalize edilmiş):</span> ${escapeHtml(fmtBandShort(f.current_value))}</div>
-                  <div><span class="muted">Kaynakta bulunan (kabul edilmiş fark):</span> ${escapeHtml(fmtBandShort(f.observed_value))}</div>
-                </div>
-                ${renderRateSelection(f)}
-                ${renderRawEvidence(f.raw_evidence)}
-              </div>`
-          )
-          .join("");
-      }
+    let bankCell = "";
+    if (isFirstOfBank) {
+      const pendingInBank = pendingCountByBank.get(row.bankName) || 0;
+      const selectAllLink =
+        pendingInBank > 1
+          ? `<button type="button" class="rk-select-bank-link" data-select-bank="${escapeHtml(row.bankName)}">Tümünü seç (${pendingInBank})</button>`
+          : "";
+      bankCell = `
+        <div class="rk-bank-name">${escapeHtml(row.bankName)}</div>
+        <a class="rk-source-link muted" href="${escapeHtml(row.sourceUrl)}" target="_blank" rel="noopener">Resmî kaynağı aç</a>
+        ${selectAllLink}
+      `;
     }
 
-    let foundCell = `<span class="muted">—</span>`;
-    if (detailHtml) {
-      dailyDetailContent.set(source.id, { title: `${bankName} — ${FINDING_STATUS_LABEL[status]}`, html: detailHtml });
-      const btnClass =
-        status === "rate_changed"
-          ? "detail-btn"
-          : status === "parse_error" || status === "unreachable" || status === "manual_required"
-            ? "warning-btn"
-            : "ok-btn";
-      foundCell = `<button type="button" class="link-btn ${btnClass}" data-daily-detail-btn data-source-id="${source.id}">Uyarıyı Gör</button>`;
+    let selectCell = "—";
+    if (row.rkStatus === "pending" && row.requestId) {
+      selectCell = `<input type="checkbox" class="rk-row-checkbox" data-request-id="${row.requestId}" data-bank="${escapeHtml(row.bankName)}" />`;
     }
+
+    const rangeCell =
+      row.rkStatus === "pending" || row.rkStatus === "approved"
+        ? escapeHtml(fmtRangeTR(row.alt, row.ust))
+        : row.rkStatus === "nochange"
+          ? "Tüm aralıklar"
+          : "—";
+
+    const oldRateCell = row.oldRate !== null && row.oldRate !== undefined ? escapeHtml(fmtPercentSimple(row.oldRate)) : "—";
+    const newRateCell = row.newRate !== null && row.newRate !== undefined ? escapeHtml(fmtPercentSimple(row.newRate)) : "—";
+
+    let actionCell = "—";
+    if (row.findingId && dailyDetailContent.has(row.findingId)) {
+      actionCell = `<button type="button" class="link-btn detail-btn" data-daily-detail-btn data-finding-id="${row.findingId}">Detay</button>`;
+    } else if (row.rkStatus === "manual" || row.rkStatus === "unreachable") {
+      actionCell = `<a href="${escapeHtml(row.sourceUrl)}" target="_blank" rel="noopener">Kaynağı Aç</a>`;
+    }
+
+    const badge = `<span class="rk-badge ${RK_BADGE_CLASS[row.rkStatus]}">${RK_LABEL[row.rkStatus]}</span>`;
 
     tr.innerHTML = `
-      <td>${escapeHtml(bankName)}</td>
-      <td>${statusCell}</td>
-      <td>${fmtDateTime(source.last_checked_at)}</td>
-      <td><a href="${escapeHtml(source.source_url)}" target="_blank" rel="noopener">Kaynağı Aç</a></td>
-      <td>${currentCell}</td>
-      <td class="daily-check-detail-col">${foundCell}</td>
+      <td class="rk-select-col">${selectCell}</td>
+      <td class="rk-bank-cell">${bankCell}</td>
+      <td>${rangeCell}</td>
+      <td>${badge}</td>
+      <td>${oldRateCell}</td>
+      <td>${newRateCell}</td>
+      <td>${actionCell}</td>
     `;
     dailyCheckTbody.appendChild(tr);
   }
+
+  updateBulkSelectionUI();
 }
 
-const dailyDetailContent = new Map(); // source.id -> { title, html }
+function renderRunDetailTechnical() {
+  const tbody = document.getElementById("run-detail-tbody");
+  if (!tbody) return;
+  if (!lastRunInfo) {
+    tbody.innerHTML = `<tr><td class="muted">Henüz bir çalışma yok.</td></tr>`;
+    return;
+  }
+  const rows = [
+    ["Çalışma kimliği", lastRunInfo.id],
+    ["Tetikleyen", lastRunInfo.triggered_by],
+    ["Başlangıç", fmtDateTime(lastRunInfo.started_at)],
+    ["Bitiş", fmtDateTime(lastRunInfo.finished_at)],
+    ["Süre", lastRunInfo.duration_ms != null ? `${(lastRunInfo.duration_ms / 1000).toFixed(1)} sn` : "—"],
+    ["Durum", lastRunInfo.status],
+    ["Kontrol edilen kaynak sayısı", lastRunInfo.sources_checked],
+    ["Değişiklik yok (doğrulanan)", lastRunInfo.verified_products],
+    ["Onay bekleyen", lastRunInfo.pending_products],
+    ["Manuel kontrol gerekli", lastRunInfo.manual_products],
+    ["Ulaşılamayan kaynak sayısı", lastRunInfo.sources_unreachable],
+    ["Oluşan bulgu sayısı", lastRunInfo.findings_created],
+    ["Hata özeti", lastRunInfo.error_summary],
+    ["Not", lastRunInfo.notes],
+  ];
+  tbody.innerHTML = rows
+    .map(([label, value]) => `<tr><td class="muted">${escapeHtml(label)}</td><td>${escapeHtml(String(value ?? "—"))}</td></tr>`)
+    .join("");
+}
+
 const dailyDetailDialog = document.getElementById("daily-detail-dialog");
 const dailyDetailTitle = document.getElementById("daily-detail-title");
 const dailyDetailBody = document.getElementById("daily-detail-body");
 
-function openDailyDetailDialog(sourceId) {
-  const entry = dailyDetailContent.get(sourceId);
+function openDailyDetailDialog(findingId) {
+  const entry = dailyDetailContent.get(findingId);
   if (!entry) return;
   dailyDetailTitle.textContent = entry.title;
   dailyDetailBody.innerHTML = entry.html;
@@ -889,8 +1039,23 @@ async function handleRateChangeAction(requestId, action) {
 
 dailyCheckTbody.addEventListener("click", (e) => {
   const detailBtn = e.target.closest("button[data-daily-detail-btn]");
-  if (!detailBtn) return;
-  openDailyDetailDialog(detailBtn.dataset.sourceId);
+  if (detailBtn) {
+    openDailyDetailDialog(detailBtn.dataset.findingId);
+    return;
+  }
+
+  const selectBankBtn = e.target.closest("button[data-select-bank]");
+  if (selectBankBtn) {
+    const bank = selectBankBtn.dataset.selectBank;
+    const boxes = Array.from(dailyCheckTbody.querySelectorAll(".rk-row-checkbox")).filter((b) => b.dataset.bank === bank);
+    const allChecked = boxes.length > 0 && boxes.every((b) => b.checked);
+    boxes.forEach((b) => (b.checked = !allChecked));
+    updateBulkSelectionUI();
+  }
+});
+
+dailyCheckTbody.addEventListener("change", (e) => {
+  if (e.target.matches(".rk-row-checkbox")) updateBulkSelectionUI();
 });
 
 // Modal içindeki Onayla/Reddet/Bu farkı kabul et düğmeleri (dinamik olarak
@@ -908,6 +1073,101 @@ dailyDetailBody.addEventListener("click", async (e) => {
   await handleRateChangeAction(btn.dataset.reqId, btn.dataset.reqAction);
   btn.disabled = false;
 });
+
+// ---------------------------------------------------------------------------
+// Toplu seçim ve toplu onay/red — approve_rate_changes_bulk /
+// reject_rate_changes_bulk RPC'lerinin TEK çağırıcısı. Tarayıcıdan
+// bank_rates'e hiçbir zaman doğrudan yazılmaz.
+// ---------------------------------------------------------------------------
+
+let bulkActionInFlight = false;
+
+function getSelectedRequestIds() {
+  return Array.from(dailyCheckTbody.querySelectorAll(".rk-row-checkbox:checked")).map((b) => b.dataset.requestId);
+}
+
+function updateBulkSelectionUI() {
+  const boxes = Array.from(dailyCheckTbody.querySelectorAll(".rk-row-checkbox"));
+  const checked = boxes.filter((b) => b.checked);
+  const approveBtn = document.getElementById("bulk-approve-btn");
+  const rejectBtn = document.getElementById("bulk-reject-btn");
+  const summaryEl = document.getElementById("bulk-selection-summary");
+  const selectAll = document.getElementById("select-all-pending");
+
+  const hasSelection = checked.length > 0;
+  approveBtn.disabled = !hasSelection || bulkActionInFlight;
+  rejectBtn.disabled = !hasSelection || bulkActionInFlight;
+  summaryEl.textContent = hasSelection ? `${checked.length} seçili` : "";
+
+  if (boxes.length === 0) {
+    selectAll.checked = false;
+    selectAll.indeterminate = false;
+    selectAll.disabled = true;
+  } else {
+    selectAll.disabled = false;
+    selectAll.checked = checked.length === boxes.length;
+    selectAll.indeterminate = checked.length > 0 && checked.length < boxes.length;
+  }
+}
+
+document.getElementById("select-all-pending").addEventListener("change", (e) => {
+  const checked = e.target.checked;
+  dailyCheckTbody.querySelectorAll(".rk-row-checkbox").forEach((b) => (b.checked = checked));
+  updateBulkSelectionUI();
+});
+
+// Onay penceresinde göstermek için: seçilen taleplerin bankaya göre kırılımı.
+function buildBulkConfirmMessage(selectedIds, verb) {
+  const counts = new Map();
+  for (const id of selectedIds) {
+    const box = dailyCheckTbody.querySelector(`.rk-row-checkbox[data-request-id="${id}"]`);
+    const bank = box ? box.dataset.bank : "Bilinmeyen";
+    counts.set(bank, (counts.get(bank) || 0) + 1);
+  }
+  const lines = Array.from(counts.entries()).map(([bank, n]) => `- ${bank}: ${n} aralık`);
+  return `${selectedIds.length} oran değişikliğini ${verb} üzeresiniz:\n${lines.join("\n")}\n\nDevam etmek istiyor musunuz?`;
+}
+
+async function runBulkAction(action) {
+  if (bulkActionInFlight) return; // çift tıklama koruması
+  const selectedIds = getSelectedRequestIds();
+  if (selectedIds.length === 0) return; // boş seçimde işlem yok
+
+  const verb = action === "approve" ? "onaylamak" : "reddetmek";
+  if (!confirm(buildBulkConfirmMessage(selectedIds, verb))) return;
+
+  bulkActionInFlight = true;
+  const approveBtn = document.getElementById("bulk-approve-btn");
+  const rejectBtn = document.getElementById("bulk-reject-btn");
+  const activeBtn = action === "approve" ? approveBtn : rejectBtn;
+  const originalText = activeBtn.textContent;
+  approveBtn.disabled = true;
+  rejectBtn.disabled = true;
+  activeBtn.textContent = "İşleniyor…";
+
+  const rpcName = action === "approve" ? "approve_rate_changes_bulk" : "reject_rate_changes_bulk";
+  const { error } = await client.rpc(rpcName, { p_request_ids: selectedIds, p_review_note: null });
+
+  activeBtn.textContent = originalText;
+  bulkActionInFlight = false;
+
+  if (error) {
+    showToast("Hata: " + error.message, true);
+    updateBulkSelectionUI();
+    return;
+  }
+
+  showToast(
+    action === "approve"
+      ? `${selectedIds.length} değişiklik onaylandı ve yayınlandı.`
+      : `${selectedIds.length} değişiklik reddedildi.`,
+    false
+  );
+  await loadAll();
+}
+
+document.getElementById("bulk-approve-btn").addEventListener("click", () => runBulkAction("approve"));
+document.getElementById("bulk-reject-btn").addEventListener("click", () => runBulkAction("reject"));
 
 // ---------------------------------------------------------------------------
 // "Bu farkı kabul et" — accept_rate_difference RPC'sinin tek çağırıcısı.

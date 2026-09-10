@@ -326,6 +326,10 @@ code {
   font-weight: 700;
   color: var(--text);
 }
+.stat-sub {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
 
 .stat-tile-meta { background: var(--bg); }
 .stat-tile-ok { background: var(--ok-bg); }
@@ -336,6 +340,88 @@ code {
 .stat-tile-manual .stat-value { color: #8a5a00; }
 .stat-tile-error { background: var(--danger-bg); }
 .stat-tile-error .stat-value { color: var(--danger); }
+
+/* Oran Kontrolü — sade özet (4 sayaç) ------------------------------------ */
+.stat-grid-simple {
+  grid-template-columns: repeat(4, minmax(110px, 1fr));
+}
+@media (max-width: 720px) {
+  .stat-grid-simple { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Onay bekleyen/güncellendi/vb. için kullanıcı dostu durum etiketleri.
+   (Eski .status-* sınıfları, teknik detay modalı içinde hâlâ kullanılıyor —
+   burada AYRI, sade bir set tanımlanıyor.) */
+.rk-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.rk-badge-nochange { background: var(--ok-bg); color: var(--ok-text); }
+.rk-badge-pending { background: var(--pending-bg); color: var(--pending-text); }
+.rk-badge-approved { background: #dbeafe; color: #1d4ed8; }
+.rk-badge-manual { background: #fff4d6; color: #8a5a00; }
+.rk-badge-unreachable { background: var(--danger-bg); color: var(--danger); }
+
+.bulk-action-row {
+  align-items: center;
+  margin: 4px 0 14px;
+}
+.bulk-action-row button:disabled { opacity: 0.45; }
+
+.rk-select-col { width: 34px; text-align: center; }
+.rk-select-col input[type="checkbox"],
+#daily-check-tbody input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  cursor: pointer;
+}
+#daily-check-tbody input[type="checkbox"]:disabled { cursor: default; opacity: 0.3; }
+
+.rk-bank-cell { min-width: 150px; }
+.rk-bank-name { font-weight: 600; }
+.rk-source-link {
+  display: block;
+  font-size: 0.74rem;
+  margin-top: 2px;
+}
+.rk-select-bank-link {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--primary);
+  text-decoration: underline;
+  cursor: pointer;
+  margin-top: 2px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+}
+
+/* Gelişmiş Ayrıntılar (varsayılan kapalı teknik bölümler) ---------------- */
+.advanced-details summary {
+  cursor: pointer;
+  font-size: 1.05rem;
+  font-weight: 700;
+  list-style: none;
+  padding: 2px 0;
+}
+.advanced-details summary::-webkit-details-marker { display: none; }
+.advanced-details summary::before { content: "▸ "; color: var(--muted); }
+.advanced-details[open] summary::before { content: "▾ "; }
+.advanced-details .advanced-details-body {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.advanced-details .advanced-details-body .card {
+  margin-bottom: 0;
+  background: var(--bg);
+}
 
 .raw-evidence-box {
   margin-top: 6px;
@@ -408,4 +494,14 @@ code {
   .stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+.health-banner {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
 }

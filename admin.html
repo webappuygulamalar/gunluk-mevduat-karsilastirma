@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Günlük Mevduat — Yönetim Paneli</title>
   <meta name="robots" content="noindex, nofollow" />
-  <link rel="stylesheet" href="admin.css?v=3" />
+  <link rel="stylesheet" href="admin.css?v=4" />
 </head>
 <body>
 
@@ -49,66 +49,110 @@
 
     <div id="toast" class="toast" hidden></div>
 
-    <!-- Günlük Kontrol ve Uyarılar -->
+    <!-- Oran Kontrolü -->
     <section class="card">
       <div class="section-header-row">
-        <h2>Günlük Kontrol ve Uyarılar</h2>
+        <h2>Oran Kontrolü</h2>
         <button type="button" id="run-check-btn">Şimdi Kontrol Et</button>
       </div>
-      <p class="muted">Her sabah 09:00 (İstanbul saati) otomatik çalışır. Bulunan her değişiklik önce burada onay bekler — hiçbir oran otomatik yayımlanmaz. <strong>Kontrol edilen ürün sayısı tek başına bir başarı göstergesi değildir</strong> — aşağıdaki dört kategori ayrı ayrı izlenmelidir.</p>
+      <div id="check-health-banner" class="health-banner" hidden></div>
+      <p class="muted" id="check-last-run-text">Son kontrol: —</p>
+      <p class="muted" id="check-last-success-text">Son başarılı kontrol: —</p>
 
-      <div id="check-summary-grid" class="stat-grid">
-        <div class="stat-tile stat-tile-meta"><span class="stat-label">Son kontrol zamanı</span><span class="stat-value" id="stat-last-run">—</span></div>
-        <div class="stat-tile stat-tile-meta"><span class="stat-label">Kontrol edilen ürün</span><span class="stat-value" id="stat-checked">—</span></div>
-        <div class="stat-tile stat-tile-ok"><span class="stat-label">Otomatik doğrulandı — değişiklik yok</span><span class="stat-value" id="stat-nochange">—</span></div>
-        <div class="stat-tile stat-tile-pending"><span class="stat-label">Değişiklik bulundu — onay bekliyor</span><span class="stat-value" id="stat-changed">—</span></div>
-        <div class="stat-tile stat-tile-manual"><span class="stat-label">Manuel kontrol gerekli</span><span class="stat-value" id="stat-manual">—</span></div>
+      <div id="check-summary-grid" class="stat-grid stat-grid-simple">
+        <div class="stat-tile stat-tile-ok"><span class="stat-label">Değişiklik yok</span><span class="stat-value" id="stat-nochange">—</span></div>
+        <div class="stat-tile stat-tile-pending"><span class="stat-label">Onay bekleyen</span><span class="stat-value" id="stat-changed">—</span><span class="stat-sub" id="stat-changed-sub"></span></div>
+        <div class="stat-tile stat-tile-manual"><span class="stat-label">Manuel kontrol</span><span class="stat-value" id="stat-manual">—</span></div>
         <div class="stat-tile stat-tile-error"><span class="stat-label">Kaynağa ulaşılamadı</span><span class="stat-value" id="stat-unreachable">—</span></div>
       </div>
-      <p class="muted" id="check-summary-sentence"></p>
+
+      <div class="button-row bulk-action-row">
+        <button type="button" id="bulk-approve-btn" disabled>Seçilenleri Onayla ve Yayınla</button>
+        <button type="button" id="bulk-reject-btn" class="secondary" disabled>Seçilenleri Reddet</button>
+        <span class="muted" id="bulk-selection-summary"></span>
+      </div>
 
       <div class="table-wrap">
         <table id="daily-check-table">
           <thead>
             <tr>
+              <th><input type="checkbox" id="select-all-pending" title="Görünen tüm bekleyenleri seç" /></th>
               <th>Banka / Ürün</th>
+              <th>Tutar Aralığı</th>
               <th>Durum</th>
-              <th>Son kontrol</th>
-              <th>Kaynak</th>
-              <th>Mevcut oran</th>
-              <th class="daily-check-detail-col">Uyarı / Detay</th>
+              <th>Eski Oran</th>
+              <th>Yeni Oran</th>
+              <th>İşlem</th>
             </tr>
           </thead>
           <tbody id="daily-check-tbody">
-            <tr><td colspan="6" class="muted">Yükleniyor…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Kabul Edilmiş Farklar -->
-    <section class="card">
-      <h2>Kabul Edilmiş Farklar</h2>
-      <p class="muted">Gerçek bir oran değişikliği olmadığı için "Bu farkı kabul et" ile onaylanmış, kaynak-vs-kayıtlı veri farkları. Kaynaktaki değer bu haliyle kaldığı sürece bir daha yeni onay talebi açılmaz; yalnızca son kontrol zamanı ve tekrar sayısı güncellenir. Kaynaktaki değer gerçekten değişirse otomatik olarak yeniden uyarı üretilir.</p>
-      <div class="table-wrap">
-        <table id="accepted-diffs-table">
-          <thead>
-            <tr>
-              <th>Banka / Ürün</th>
-              <th>Ham kaynak değeri</th>
-              <th>Normalize edilmiş (uygulamada kullanılan) değer</th>
-              <th>Gerekçe</th>
-              <th>Kabul eden / tarih</th>
-              <th>Tekrar sayısı</th>
-              <th>Son görülme</th>
-            </tr>
-          </thead>
-          <tbody id="accepted-diffs-tbody">
             <tr><td colspan="7" class="muted">Yükleniyor…</td></tr>
           </tbody>
         </table>
       </div>
     </section>
+
+    <!-- Gelişmiş Ayrıntılar (teknik bölümler, varsayılan kapalı) -->
+    <details class="card advanced-details">
+      <summary>Gelişmiş Ayrıntılar</summary>
+      <div class="advanced-details-body">
+
+        <section class="card">
+          <h2>Kabul Edilmiş Farklar</h2>
+          <p class="muted">Gerçek bir oran değişikliği olmadığı için "Bu farkı kabul et" ile onaylanmış, kaynak-vs-kayıtlı veri farkları. Kaynaktaki değer bu haliyle kaldığı sürece bir daha yeni onay talebi açılmaz; yalnızca son kontrol zamanı ve tekrar sayısı güncellenir. Kaynaktaki değer gerçekten değişirse otomatik olarak yeniden uyarı üretilir.</p>
+          <div class="table-wrap">
+            <table id="accepted-diffs-table">
+              <thead>
+                <tr>
+                  <th>Banka / Ürün</th>
+                  <th>Ham kaynak değeri</th>
+                  <th>Normalize edilmiş (uygulamada kullanılan) değer</th>
+                  <th>Gerekçe</th>
+                  <th>Kabul eden / tarih</th>
+                  <th>Tekrar sayısı</th>
+                  <th>Son görülme</th>
+                </tr>
+              </thead>
+              <tbody id="accepted-diffs-tbody">
+                <tr><td colspan="7" class="muted">Yükleniyor…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Teknik Çalışma Detayları</h2>
+          <p class="muted">Son otomatik kontrol çalışmasının ham verileri.</p>
+          <div class="table-wrap">
+            <table id="run-detail-table">
+              <tbody id="run-detail-tbody">
+                <tr><td class="muted">Yükleniyor…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Son İşlemler (Audit Log)</h2>
+          <div class="table-wrap">
+            <table id="audit-table">
+              <thead>
+                <tr>
+                  <th>Zaman</th>
+                  <th>İşlem</th>
+                  <th>Tablo</th>
+                  <th>Detay</th>
+                </tr>
+              </thead>
+              <tbody id="audit-tbody">
+                <tr><td colspan="4" class="muted">Yükleniyor…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+    </details>
 
     <!-- Aktif oranlar -->
     <section class="card">
@@ -200,25 +244,6 @@
       </div>
     </section>
 
-    <!-- Audit log -->
-    <section class="card">
-      <h2>Son İşlemler (Audit Log)</h2>
-      <div class="table-wrap">
-        <table id="audit-table">
-          <thead>
-            <tr>
-              <th>Zaman</th>
-              <th>İşlem</th>
-              <th>Tablo</th>
-              <th>Detay</th>
-            </tr>
-          </thead>
-          <tbody id="audit-tbody">
-            <tr><td colspan="4" class="muted">Yükleniyor…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
   </section>
 
   <!-- Ürün notu detay penceresi -->
@@ -295,6 +320,6 @@
   </dialog>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/dist/umd/supabase.min.js"></script>
-  <script src="admin.js?v=3"></script>
+  <script src="admin.js?v=4"></script>
 </body>
 </html>

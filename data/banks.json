@@ -488,12 +488,12 @@
     "altLimit": 20000,
     "ustLimit": 250000,
     "vadesizdeKalacak": 20000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
     "banka": "Alternatifbank",
-    "altLimit": 250001,
+    "altLimit": 250000.01,
     "ustLimit": 500000,
     "vadesizdeKalacak": 40000,
     "yillikBrutOran": 0.45,
@@ -501,15 +501,15 @@
   },
   {
     "banka": "Alternatifbank",
-    "altLimit": 500001,
+    "altLimit": 500000.01,
     "ustLimit": 1000000,
     "vadesizdeKalacak": 75000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
     "banka": "Alternatifbank",
-    "altLimit": 1000001,
+    "altLimit": 1000000.01,
     "ustLimit": 1500000,
     "vadesizdeKalacak": 150000,
     "yillikBrutOran": 0.44,
@@ -517,7 +517,7 @@
   },
   {
     "banka": "Alternatifbank",
-    "altLimit": 1500001,
+    "altLimit": 1500000.01,
     "ustLimit": 2000000,
     "vadesizdeKalacak": 175000,
     "yillikBrutOran": 0.44,
@@ -525,7 +525,7 @@
   },
   {
     "banka": "Alternatifbank",
-    "altLimit": 2000001,
+    "altLimit": 2000000.01,
     "ustLimit": 3000000,
     "vadesizdeKalacak": 250000,
     "yillikBrutOran": 0.44,
@@ -533,7 +533,7 @@
   },
   {
     "banka": "Alternatifbank",
-    "altLimit": 3000001,
+    "altLimit": 3000000.01,
     "ustLimit": 4000000,
     "vadesizdeKalacak": 350000,
     "yillikBrutOran": 0.44,
@@ -541,7 +541,7 @@
   },
   {
     "banka": "Alternatifbank",
-    "altLimit": 4000001,
+    "altLimit": 4000000.01,
     "ustLimit": 5000000,
     "vadesizdeKalacak": 450000,
     "yillikBrutOran": 0.44,
@@ -549,7 +549,7 @@
   },
   {
     "banka": "Alternatifbank",
-    "altLimit": 5000001,
+    "altLimit": 5000000.01,
     "ustLimit": 7500000,
     "vadesizdeKalacak": 600000,
     "yillikBrutOran": 0.44,
@@ -557,7 +557,7 @@
   },
   {
     "banka": "Alternatifbank",
-    "altLimit": 7500001,
+    "altLimit": 7500000.01,
     "ustLimit": 10000000,
     "vadesizdeKalacak": 900000,
     "yillikBrutOran": 0.44,
@@ -565,7 +565,7 @@
   },
   {
     "banka": "Alternatifbank",
-    "altLimit": 10000001,
+    "altLimit": 10000000.01,
     "ustLimit": 15000000,
     "vadesizdeKalacak": 1500000,
     "yillikBrutOran": 0.44,
@@ -573,10 +573,10 @@
   },
   {
     "banka": "Alternatifbank",
-    "altLimit": 15000001,
+    "altLimit": 15000000.01,
     "ustLimit": 9999999999,
     "vadesizdeKalacak": 2500000,
-    "yillikBrutOran": 0.425,
+    "yillikBrutOran": 0.415,
     "not": ""
   },
   {
@@ -808,119 +808,119 @@
     "altLimit": 0,
     "ustLimit": 25000,
     "vadesizdeKalacak": 7500,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
     "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
-    "altLimit": 25001,
+    "altLimit": 25000.01,
     "ustLimit": 50000,
     "vadesizdeKalacak": 7500,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
     "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
-    "altLimit": 50001,
+    "altLimit": 50000.01,
     "ustLimit": 100000,
     "vadesizdeKalacak": 10000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
     "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
-    "altLimit": 100001,
+    "altLimit": 100000.01,
     "ustLimit": 250000,
     "vadesizdeKalacak": 20000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
     "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
-    "altLimit": 250001,
+    "altLimit": 250000.01,
     "ustLimit": 500000,
     "vadesizdeKalacak": 40000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
     "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
-    "altLimit": 500001,
+    "altLimit": 500000.01,
     "ustLimit": 750000,
     "vadesizdeKalacak": 75000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
     "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
-    "altLimit": 750001,
+    "altLimit": 750000.01,
     "ustLimit": 1000000,
     "vadesizdeKalacak": 125000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
     "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
-    "altLimit": 1000001,
+    "altLimit": 1000000.01,
     "ustLimit": 2000000,
     "vadesizdeKalacak": 200000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
     "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
-    "altLimit": 2000001,
+    "altLimit": 2000000.01,
     "ustLimit": 3000000,
     "vadesizdeKalacak": 350000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
     "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
-    "altLimit": 3000001,
+    "altLimit": 3000000.01,
     "ustLimit": 4000000,
     "vadesizdeKalacak": 450000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
     "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
-    "altLimit": 4000001,
+    "altLimit": 4000000.01,
     "ustLimit": 5000000,
     "vadesizdeKalacak": 600000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
     "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
-    "altLimit": 5000001,
+    "altLimit": 5000000.01,
     "ustLimit": 6000000,
     "vadesizdeKalacak": 750000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
     "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
-    "altLimit": 6000001,
+    "altLimit": 6000000.01,
     "ustLimit": 7000000,
     "vadesizdeKalacak": 900000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
     "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
-    "altLimit": 7000001,
+    "altLimit": 7000000.01,
     "ustLimit": 10000000,
     "vadesizdeKalacak": 1000000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {
     "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
-    "altLimit": 10000001,
+    "altLimit": 10000000.01,
     "ustLimit": 20000000,
     "vadesizdeKalacak": 1500000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": "Hoş geldin oranı 100 gün geçerlidir. Yalnızca ilk kez Odeabank müşterisi olanlar için geçerlidir."
   },
   {

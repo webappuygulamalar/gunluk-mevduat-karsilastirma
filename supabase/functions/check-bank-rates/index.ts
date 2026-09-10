@@ -155,6 +155,36 @@ function parseTomBank(html: string): ParseResult {
     });
   }
 
+  // Kaynak sayfa ardışık bantları tam sayı "x-1 TL üst / x TL alt" kalıbıyla
+  // yazıyor (ör. üst=7.499.999, sonraki bandın alt=7.500.000). TOM Bank'ın
+  // yerleşik kuruş-hassasiyetli kuralı (2026-09-08 olayında elle düzeltilen
+  // ilk bant ile aynı desen): ÜST sınır kuruş bazında düşürülür
+  // (next_alt_limit - 0,01); SONRAKİ bandın temiz/yuvarlak alt limiti
+  // DEĞİŞTİRİLMEZ. Bu, Alternatifbank'ın (orada ALT limit yükseltilir)
+  // TERSİ yönde bir normalizasyon — her ikisi de aynı amaca hizmet eder: TL
+  // kuruşlarında bant boşluğu kalmasın. Ham kaynak üst limit metni
+  // ("Üst Limit (kaynak sütunu)") DEĞİŞTİRİLMEDEN raw'da kalır; normalize
+  // gerekçesi ayrıca eklenir. Normalizasyon SADECE ardışık bantlar
+  // arasındaki fark TAM 1 TL olduğunda uygulanır — başka bir boşluk
+  // deseninde dokunulmaz (validateBands bunu ayrıca yakalar, tahmin
+  // üretilmez). Oranlar HER ZAMAN sayfadan ayrıştırılır, sabit kodlanmaz.
+  bands.sort((a, b) => a.alt_limit - b.alt_limit);
+  for (let i = 0; i < bands.length - 1; i++) {
+    const cur = bands[i];
+    const next = bands[i + 1];
+    const gap = next.alt_limit - cur.ust_limit;
+    if (Math.abs(gap - 1) < 1e-9) {
+      const rawUst = cur.ust_limit;
+      const normalizedUst = Math.round((next.alt_limit - 0.01) * 100) / 100;
+      cur.ust_limit = normalizedUst;
+      cur.raw = {
+        ...cur.raw,
+        raw_source_values: String(rawUst),
+        Normalizasyon: "TL kuruşlarında bant boşluğu oluşmaması için üst sınır +0,99 TL normalize edildi",
+      };
+    }
+  }
+
   return { ok: true, bands, rawTierCount: bands.length };
 }
 
@@ -534,6 +564,32 @@ function parseAlternatifbankVOV(html: string): ParseResult {
   }
 
   if (bands.length === 0) return fail("TL satırı bulunamadı");
+
+  // Kaynak sayfa ardışık bantları tam sayı "x - x+1" kalıbıyla yazıyor (ör.
+  // "20.000 - 250.000" / "250.001 - 500.000"). Bu, uygulamanın kuruş
+  // hassasiyetli bant modelinde 250.000,01–250.000,99 TL aralığının hiçbir
+  // banda girmemesine (kapsama boşluğuna) yol açar. Ham metin (raw."Tutar
+  // Aralığı") OLDUĞU GİBİ korunur — yalnızca normalize edilmiş alt_limit,
+  // önceki bandın üst sınırına kuruş hassasiyetinde bitiştirilir. Bu
+  // normalizasyon SADECE ardışık bantlar arasındaki fark TAM 1 TL olduğunda
+  // uygulanır; başka bir boşluk deseni varsa dokunulmaz (validateBands bunu
+  // ayrıca boşluk/çakışma olarak yakalar, tahmin üretilmez).
+  bands.sort((a, b) => a.alt_limit - b.alt_limit);
+  for (let i = 1; i < bands.length; i++) {
+    const prev = bands[i - 1];
+    const cur = bands[i];
+    const gap = cur.alt_limit - prev.ust_limit;
+    if (Math.abs(gap - 1) < 1e-9) {
+      const rawAlt = cur.alt_limit;
+      const normalizedAlt = Math.round((prev.ust_limit + 0.01) * 100) / 100;
+      cur.alt_limit = normalizedAlt;
+      cur.raw = {
+        ...cur.raw,
+        "Normalizasyon": `TL kuruşlarında kapsama boşluğu oluşmaması için alt limit ${rawAlt.toLocaleString("tr-TR")} TL yerine ${normalizedAlt.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL olarak kaydedildi (ham kaynak aralığı: "${cur.raw?.["Tutar Aralığı"] ?? rawAlt}").`,
+      };
+    }
+  }
+
   return { ok: true, bands, rawTierCount: bands.length };
 }
 
@@ -735,6 +791,26 @@ function validateBands(bands: ParsedBand[], expectedTierCount: number | null, ra
   return null;
 }
 
+// rate_change_requests.previous_data içinde saklanan bir bank_rates satırı
+// anlık görüntüsünü (ya da elle öneri formunun kısmi previous_data'sını)
+// bandsEqual ile karşılaştırılabilir bir ParsedBand'e çevirir.
+function parsedBandFromSnapshot(snapshot: unknown): ParsedBand | null {
+  if (!snapshot || typeof snapshot !== "object") return null;
+  const s = snapshot as Record<string, unknown>;
+  const alt = Number(s.alt_limit);
+  const ust = Number(s.ust_limit);
+  const oran = Number(s.yillik_brut_oran);
+  if (!Number.isFinite(alt) || !Number.isFinite(ust) || !Number.isFinite(oran)) return null;
+  return {
+    alt_limit: alt,
+    ust_limit: ust,
+    yillik_brut_oran: oran,
+    vadesizde_kalacak: Number(s.vadesizde_kalacak ?? 0),
+    vadesiz_hesaplama_tipi: (s.vadesiz_hesaplama_tipi as "sabit" | "yuzde") ?? "sabit",
+    vadesiz_oran: s.vadesiz_oran !== undefined && s.vadesiz_oran !== null ? Number(s.vadesiz_oran) : null,
+  };
+}
+
 function bandsEqual(a: ParsedBand, b: ParsedBand): boolean {
   if (Math.abs(a.alt_limit - b.alt_limit) > EPS_MONEY) return false;
   if (Math.abs(a.ust_limit - b.ust_limit) > EPS_MONEY) return false;
@@ -847,7 +923,13 @@ async function processSource(
   supabase: SupabaseClient,
   runId: string,
   source: BankSourceRow,
-  dryRun: boolean
+  dryRun: boolean,
+  // Sayfa artık burada DEĞİL, çağıran tarafta (Deno.serve içinde) tek bir
+  // yerde, aynı URL'yi paylaşan ürünler için TEK SEFER ve paralel çekiliyor
+  // — bkz. Deno.serve içindeki htmlByUrl haritası. manual_required olan
+  // kaynaklar için bu parametre hiç kullanılmaz (aşağıdaki ilk dal zaten
+  // erken döner).
+  fetched: { ok: true; html: string } | { ok: false; error: string }
 ): Promise<{ status: "ok" | "unreachable" | "parse_error" | "manual_required"; findingsCreated: number }> {
   const bankName = source.banks?.name ?? source.bank_id;
 
@@ -867,7 +949,6 @@ async function processSource(
     return { status: "manual_required", findingsCreated: 1 };
   }
 
-  const fetched = await fetchSourcePage(source.source_url);
   if (!fetched.ok) {
     await supabase.from("rate_check_findings").insert({
       run_id: runId,
@@ -1083,15 +1164,24 @@ async function processSource(
 
     const { data: existingPending } = await supabase
       .from("rate_change_requests")
-      .select("id, proposed_data")
+      .select("id, proposed_data, previous_data")
       .eq("bank_rate_id", storedBand.id)
       .eq("status", "pending")
       .eq("source", "automation");
 
     const proposedCanonical = canonicalJson(proposedData);
-    const duplicate = (existingPending ?? []).find(
-      (r: { proposed_data: unknown }) => canonicalJson(r.proposed_data) === proposedCanonical
-    );
+    const duplicate = (existingPending ?? []).find((r: { proposed_data: unknown; previous_data: unknown }) => {
+      if (canonicalJson(r.proposed_data) !== proposedCanonical) return false;
+      // Mevcut pending talebin previous_data'sı (o talep açıldığında beklenen
+      // taban değer) hâlâ canlı bant ile eşleşiyor mu? Eşleşmiyorsa o talep
+      // ARTIK BAYAT demektir (approve_rate_change de bunu ayrıca reddeder) —
+      // mükerrer sayılmaz, aşağıda taze previous_data'lı YENİ bir talep
+      // açılır. Eski bayat talep pending kalmaya devam eder; admin onu
+      // reddedip taze talebi onaylayabilir.
+      const prevParsed = parsedBandFromSnapshot(r.previous_data);
+      if (!prevParsed) return false;
+      return bandsEqual(prevParsed, storedAsParsed);
+    });
 
     if (duplicate) {
       await supabase.from("rate_check_findings").insert({
@@ -1196,6 +1286,81 @@ async function isAuthorized(req: Request): Promise<boolean> {
   return profile?.role === "admin";
 }
 
+// ---------------------------------------------------------------------------
+// bank_sources sorgusuna kısa/artan bekemeli retry
+// ---------------------------------------------------------------------------
+//
+// 2026-09-09 06:00 UTC olayı: Edge Function'ın İLK sorgusu (bank_sources +
+// banks join) Supabase API katmanından tek seferlik bir "Gateway Timeout"
+// aldı ve bu TEK nokta 10 kaynağın hiçbirinin kontrol edilmemesine yol açtı.
+// Bu fonksiyon, YALNIZCA GEÇİCİ (zaman aşımı/bağlantı/5xx) hatalarda kısa ve
+// artan bir bekleme ile en fazla 3 kez dener; 4xx/yetki/RLS gibi KALICI
+// hatalarda gereksiz yere tekrar ETMEZ (ilk denemede durur). Her denemenin
+// süresi ve hatası (varsa) döndürülür — çağıran taraf bunu rate_check_runs
+// .notes alanına yazar.
+const BANK_SOURCES_RETRY_DELAYS_MS = [500, 1500, 3000];
+const BANK_SOURCES_MAX_ATTEMPTS = 3;
+
+interface BankSourcesAttempt {
+  attempt: number;
+  ms: number;
+  error: string | null;
+}
+
+function isTransientDbError(message: string): boolean {
+  const m = message.toLowerCase();
+  return /timeout|timed out|gateway|network|fetch failed|econnreset|econnrefused|socket hang up|too many requests|429|5\d\d\b|temporarily|unavailable|bağlantı/.test(
+    m
+  );
+}
+
+async function fetchBankSourcesWithRetry(
+  supabase: SupabaseClient
+): Promise<{ ok: true; sources: unknown[]; attempts: BankSourcesAttempt[] } | { ok: false; error: string; attempts: BankSourcesAttempt[] }> {
+  const attempts: BankSourcesAttempt[] = [];
+  let lastError = "bilinmeyen hata";
+
+  for (let attempt = 1; attempt <= BANK_SOURCES_MAX_ATTEMPTS; attempt++) {
+    const t0 = performance.now();
+    const { data, error } = await supabase
+      .from("bank_sources")
+      .select("id, bank_id, source_url, page_marker_text, expected_tier_count, requires_manual_check, notes, banks!inner(name, is_enabled)")
+      .eq("banks.is_enabled", true)
+      .order("created_at", { ascending: true });
+    const ms = Math.round(performance.now() - t0);
+
+    if (!error && data) {
+      attempts.push({ attempt, ms, error: null });
+      return { ok: true, sources: data, attempts };
+    }
+
+    const message = error?.message ?? "bank_sources okunamadı (veri boş döndü)";
+    attempts.push({ attempt, ms, error: message });
+    lastError = message;
+
+    if (!isTransientDbError(message)) {
+      // Kalıcı hata (ör. yetki/RLS/404) — tekrar denemek sonucu DEĞİŞTİRMEZ,
+      // gereksiz yere beklemeden hemen çıkılır.
+      break;
+    }
+    if (attempt < BANK_SOURCES_MAX_ATTEMPTS) {
+      await new Promise((resolve) => setTimeout(resolve, BANK_SOURCES_RETRY_DELAYS_MS[attempt - 1]));
+    }
+  }
+
+  return { ok: false, error: lastError, attempts };
+}
+
+function formatAttemptsNote(attempts: BankSourcesAttempt[]): string | null {
+  if (attempts.length <= 1 && attempts[0]?.error === null) return null; // ilk denemede başarılı — not gerekmez
+  return (
+    "bank_sources sorgu denemeleri: " +
+    attempts
+      .map((a) => `deneme ${a.attempt} (${a.ms}ms)${a.error ? `: ${a.error}` : ": başarılı"}`)
+      .join(" | ")
+  );
+}
+
 Deno.serve(async (req: Request) => {
   if (!(await isAuthorized(req))) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -1205,149 +1370,288 @@ Deno.serve(async (req: Request) => {
   }
 
   let dryRun = false;
-  let triggeredBy: "cron" | "manual" = req.headers.get("x-cron-secret") ? "cron" : "manual";
+  let retryCheck = false;
+  let triggeredBy: "cron" | "manual" | "retry" = req.headers.get("x-cron-secret") ? "cron" : "manual";
   try {
     if (req.headers.get("content-type")?.includes("application/json")) {
       const body = await req.json().catch(() => ({}));
       if (body?.dryRun === true || body?.dry_run === true) dryRun = true;
+      if (body?.retry_check === true) retryCheck = true;
     }
   } catch {
     // gövde yoksa/parse edilemezse varsayılanlarla devam
   }
-  const url = new URL(req.url);
-  if (url.searchParams.get("dry_run") === "true") dryRun = true;
+  const reqUrl = new URL(req.url);
+  if (reqUrl.searchParams.get("dry_run") === "true") dryRun = true;
+  if (retryCheck) triggeredBy = "retry";
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+  const startedAtMs = Date.now();
+  let runId: string | null = null;
+  let initialNote: string | null = null;
 
-  const { data: run, error: runErr } = await supabase
-    .from("rate_check_runs")
-    .insert({ status: "running", triggered_by: triggeredBy, dry_run: dryRun })
-    .select("id")
-    .single();
+  // 2026-09-09 06:00 UTC olayı: bank_sources sorgusu Supabase API katmanından
+  // "Gateway Timeout" ile 500 döndü — rate_check_runs'a status='failure' +
+  // error_summary yazıldı (o kısım zaten çalıştı), AMA bu tek nokta çalışmanın
+  // TAMAMINI götürdü ve 10 kaynağın hiçbiri kontrol edilemedi. Bu try/catch,
+  // BEKLENMEYEN her türlü hatanın (bank_sources sorgusu dahil, kod hatası
+  // dahil) rate_check_runs'a MUTLAKA bir sonuç bırakmasını garanti eder —
+  // "0 kaynak, sessiz başarısızlık" bir daha olmaz.
+  try {
+    if (retryCheck) {
+      // Karar TEK atomik RPC'de veriliyor (pg_try_advisory_xact_lock +
+      // "bugün zaten gerçek retry oldu mu" ikinci katman kontrolü ile) —
+      // eşzamanlı iki çağrıdan yalnızca biri gerçek kontrol yapar. RPC,
+      // 'skip' veya 'run' durumuna göre rate_check_runs satırını ZATEN
+      // INSERT etmiş olarak döner; bu fonksiyon yalnızca sonucu kullanır.
+      const { data: decisionRows, error: decisionErr } = await supabase.rpc("decide_retry_run");
+      const decision = decisionRows?.[0];
 
-  if (runErr || !run) {
-    return new Response(JSON.stringify({ error: "rate_check_runs oluşturulamadı" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+      if (decisionErr || !decision) {
+        return new Response(
+          JSON.stringify({ error: "Retry kararı alınamadı", detail: decisionErr?.message }),
+          { status: 500, headers: { "Content-Type": "application/json" } }
+        );
+      }
 
-  // banks!inner + is_enabled=true filtresi: pasifleştirilmiş bankalar (ör.
-  // kullanıcı kararıyla mükerrer olduğu için kapatılan Odeabank Oksijen Hoş
-  // Geldin) günlük kontrolde HİÇ görünmez — ne bulgu ne pending talep
-  // üretilir. bank_sources satırı silinmez, yalnızca bu sorgudan elenir.
-  const { data: sources, error: sourcesErr } = await supabase
-    .from("bank_sources")
-    .select("id, bank_id, source_url, page_marker_text, expected_tier_count, requires_manual_check, notes, banks!inner(name, is_enabled)")
-    .eq("banks.is_enabled", true)
-    .order("created_at", { ascending: true });
+      if (decision.action === "skip") {
+        return new Response(
+          JSON.stringify({ skipped: true, reason: decision.reason, run_id: decision.run_id }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
 
-  if (sourcesErr || !sources) {
+      // action === 'run': RPC zaten 'running' durumunda bir satır açtı,
+      // bu id kullanılacak (yeni bir satır INSERT edilmeyecek).
+      runId = decision.run_id;
+      initialNote = `Ana kontrol nedeniyle retry tetiklendi — gerekçe: ${decision.reason}`;
+    } else {
+      const { data: run, error: runErr } = await supabase
+        .from("rate_check_runs")
+        .insert({ status: "running", triggered_by: triggeredBy, dry_run: dryRun })
+        .select("id")
+        .single();
+
+      if (runErr || !run) {
+        return new Response(JSON.stringify({ error: "rate_check_runs oluşturulamadı", detail: runErr?.message }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      runId = run.id;
+    }
+
+    if (!runId) {
+      // Buraya asla ulaşılmamalı (yukarıdaki her iki dal da erken döner ya
+      // da runId'yi atar) — yalnızca TypeScript'in null daraltması için.
+      throw new Error("runId belirlenemedi (beklenmeyen durum)");
+    }
+
+    // banks!inner + is_enabled=true filtresi: pasifleştirilmiş bankalar (ör.
+    // kullanıcı kararıyla mükerrer olduğu için kapatılan Odeabank Oksijen Hoş
+    // Geldin) günlük kontrolde HİÇ görünmez — ne bulgu ne pending talep
+    // üretilir. bank_sources satırı silinmez, yalnızca bu sorgudan elenir.
+    //
+    // Bu sorgu artık kısa/artan bekemeli retry ile sarmalanmış durumda (bkz.
+    // fetchBankSourcesWithRetry): yalnızca GEÇİCİ (timeout/5xx/ağ) hatalarda
+    // en fazla 3 kez denenir; kalıcı (4xx/yetki) hatalarda hemen durur.
+    const sourcesResult = await fetchBankSourcesWithRetry(supabase);
+    const attemptsNote = formatAttemptsNote(sourcesResult.attempts);
+    const combinedNote = [initialNote, attemptsNote].filter((n): n is string => !!n).join(" | ") || null;
+
+    if (!sourcesResult.ok) {
+      await supabase
+        .from("rate_check_runs")
+        .update({
+          status: "failure",
+          finished_at: new Date().toISOString(),
+          duration_ms: Date.now() - startedAtMs,
+          error_summary: sourcesResult.error,
+          notes: combinedNote,
+        })
+        .eq("id", runId);
+      return new Response(JSON.stringify({ error: "bank_sources okunamadı", run_id: runId }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const allSources = sourcesResult.sources as unknown as BankSourceRow[];
+    const manualSources = allSources.filter((s) => s.requires_manual_check);
+    const autoSources = allSources.filter((s) => !s.requires_manual_check);
+
+    // Aynı URL'yi paylaşan ürünler için (Fibabanka Fonlu Kiraz / Kiraz Hoş
+    // Geldin aynı sayfa; ING'nin iki ürünü aynı sayfa) sayfa YALNIZCA BİR
+    // KEZ çekilir. Benzersiz kaynaklar KONTROLLÜ PARALEL (Promise.allSettled)
+    // çekilir — biri zaman aşımına uğrarsa/patlarsa DİĞERLERİNİ ASLA
+    // etkilemez ve dış try/catch'e sızmaz (iç try/catch zaten sonucu
+    // {ok:false} olarak paketler, böylece allSettled hep "fulfilled" döner).
+    const uniqueUrls = Array.from(new Set(autoSources.map((s) => s.source_url)));
+    const fetchTimingsMs: Record<string, number> = {};
+    const fetchSettled = await Promise.allSettled(
+      uniqueUrls.map(async (u) => {
+        const t0 = performance.now();
+        try {
+          const result = await fetchSourcePage(u);
+          fetchTimingsMs[u] = Math.round(performance.now() - t0);
+          return { url: u, result };
+        } catch (err) {
+          fetchTimingsMs[u] = Math.round(performance.now() - t0);
+          return { url: u, result: { ok: false as const, error: err instanceof Error ? err.message : String(err) } };
+        }
+      })
+    );
+    const htmlByUrl = new Map<string, { ok: true; html: string } | { ok: false; error: string }>();
+    for (const s of fetchSettled) {
+      if (s.status === "fulfilled") htmlByUrl.set(s.value.url, s.value.result);
+    }
+
+    let sourcesChecked = 0;
+    let sourcesUnreachable = 0;
+    let findingsCreated = 0;
+    const summary: Record<string, string> = {};
+
+    // Her ürün izole: biri hata verse (parse hatası, ağ hatası, beklenmeyen
+    // istisna) de döngü diğerlerini kontrol etmeye devam eder — tek bir
+    // ürünün ayrıştırma hatası ASLA tüm çalışmayı 500'e düşürmez.
+    for (const source of [...manualSources, ...autoSources]) {
+      sourcesChecked++;
+      try {
+        const fetched = source.requires_manual_check
+          ? ({ ok: false, error: "manual_required — fetch atlandı" } as const)
+          : htmlByUrl.get(source.source_url) ?? ({ ok: false, error: "Fetch sonucu bulunamadı (beklenmeyen durum)" } as const);
+        const result = await processSource(supabase, runId, source, dryRun, fetched);
+        findingsCreated += result.findingsCreated;
+        if (result.status === "unreachable") sourcesUnreachable++;
+        summary[source.banks?.name ?? source.bank_id] = result.status;
+      } catch (err) {
+        sourcesUnreachable++;
+        const message = err instanceof Error ? err.message : String(err);
+        summary[source.banks?.name ?? source.bank_id] = "error";
+        await supabase.from("rate_check_findings").insert({
+          run_id: runId,
+          bank_source_id: source.id,
+          bank_id: source.bank_id,
+          finding_type: "unreachable",
+          evidence_url: source.source_url,
+          detail: `Beklenmeyen hata: ${message}`,
+        });
+      }
+    }
+
+    const finalStatus = sourcesUnreachable === 0 ? "success" : sourcesUnreachable === sourcesChecked ? "failure" : "partial_failure";
+
+    // "11/11 kontrol edildi" TEK BAŞINA bir başarı ifadesi değildir — dört
+    // kategoriye ayrılmış sayım, gerçek durumu gösterir. Bir kaynağın birden
+    // fazla bandı değiştiyse (rate_changed) o kaynak yalnızca BİR kez
+    // "değişiklik bulundu" olarak sayılır (distinct bank_source_id).
+    const { data: runFindings } = await supabase
+      .from("rate_check_findings")
+      .select("bank_source_id, finding_type")
+      .eq("run_id", runId);
+
+    const statusBySource = new Map<string, string>();
+    for (const f of runFindings ?? []) {
+      const prev = statusBySource.get(f.bank_source_id);
+      // Öncelik sırası: rate_changed > parse_error > unreachable > manual_required > accepted_difference/no_change
+      const rank: Record<string, number> = {
+        rate_changed: 4,
+        parse_error: 3,
+        unreachable: 3,
+        manual_required: 2,
+        accepted_difference: 1,
+        no_change: 1,
+      };
+      if (!prev || (rank[f.finding_type] ?? 0) > (rank[prev] ?? 0)) {
+        statusBySource.set(f.bank_source_id, f.finding_type);
+      }
+    }
+
+    const categoryCounts = {
+      auto_verified_no_change: 0, // Otomatik doğrulandı – değişiklik yok
+      change_pending_approval: 0, // Değişiklik bulundu – onay bekliyor
+      manual_check_required: 0, // Manuel kontrol gerekli (kalıcı manuel + ayrıştırma hatası)
+      source_unreachable: 0, // Kaynağa ulaşılamadı
+    };
+    for (const type of statusBySource.values()) {
+      if (type === "no_change" || type === "accepted_difference") categoryCounts.auto_verified_no_change++;
+      else if (type === "rate_changed") categoryCounts.change_pending_approval++;
+      else if (type === "manual_required" || type === "parse_error") categoryCounts.manual_check_required++;
+      else if (type === "unreachable") categoryCounts.source_unreachable++;
+    }
+
+    const durationMs = Date.now() - startedAtMs;
+
     await supabase
       .from("rate_check_runs")
       .update({
-        status: "failure",
+        status: finalStatus,
         finished_at: new Date().toISOString(),
-        error_summary: sourcesErr?.message ?? "bank_sources okunamadı",
+        sources_checked: sourcesChecked,
+        sources_unreachable: sourcesUnreachable,
+        findings_created: findingsCreated,
+        verified_products: categoryCounts.auto_verified_no_change,
+        pending_products: categoryCounts.change_pending_approval,
+        manual_products: categoryCounts.manual_check_required,
+        duration_ms: durationMs,
       })
-      .eq("id", run.id);
-    return new Response(JSON.stringify({ error: "bank_sources okunamadı" }), {
+      .eq("id", runId);
+
+    return new Response(
+      JSON.stringify({
+        run_id: runId,
+        status: finalStatus,
+        dry_run: dryRun,
+        sources_checked: sourcesChecked,
+        sources_unreachable: sourcesUnreachable,
+        findings_created: findingsCreated,
+        categories: categoryCounts,
+        summary,
+        duration_ms: durationMs,
+        source_timings_ms: fetchTimingsMs,
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  } catch (err) {
+    // Beklenmeyen bir hata (kod hatası, altyapı sorunu vb.) çalışmayı 500'e
+    // düşürse bile en azından rate_check_runs'a KESİN bir sonuç bırakılır —
+    // admin panelinde açıklanamayan, sessiz bir "0 kaynak" kaydı bir daha
+    // KALMAZ. run zaten oluşturulmuşsa UPDATE edilir; oluşturulamadıysa
+    // (ör. ilk INSERT'in kendisi patladıysa) en azından yeni bir satır
+    // INSERT edilmeye çalışılır.
+    const message = err instanceof Error ? err.message : String(err);
+    const durationMs = Date.now() - startedAtMs;
+    try {
+      if (runId) {
+        await supabase
+          .from("rate_check_runs")
+          .update({
+            status: "failure",
+            finished_at: new Date().toISOString(),
+            duration_ms: durationMs,
+            error_summary: message,
+          })
+          .eq("id", runId);
+      } else {
+        await supabase.from("rate_check_runs").insert({
+          status: "failure",
+          triggered_by: triggeredBy,
+          dry_run: dryRun,
+          sources_checked: 0,
+          sources_unreachable: 0,
+          findings_created: 0,
+          duration_ms: durationMs,
+          finished_at: new Date().toISOString(),
+          error_summary: message,
+        });
+      }
+    } catch {
+      // Son çare: bookkeeping bile başarısız olursa sessizce geç — asıl
+      // hatayı gizlemeden 500 dönmeye devam et.
+    }
+    return new Response(JSON.stringify({ error: "Beklenmeyen hata", detail: message, run_id: runId }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
-
-  let sourcesChecked = 0;
-  let sourcesUnreachable = 0;
-  let findingsCreated = 0;
-  const summary: Record<string, string> = {};
-
-  // Her banka izole: biri hata verse de döngü diğerlerini kontrol etmeye devam eder.
-  for (const source of sources as unknown as BankSourceRow[]) {
-    sourcesChecked++;
-    try {
-      const result = await processSource(supabase, run.id, source, dryRun);
-      findingsCreated += result.findingsCreated;
-      if (result.status === "unreachable") sourcesUnreachable++;
-      summary[source.banks?.name ?? source.bank_id] = result.status;
-    } catch (err) {
-      sourcesUnreachable++;
-      const message = err instanceof Error ? err.message : String(err);
-      summary[source.banks?.name ?? source.bank_id] = "error";
-      await supabase.from("rate_check_findings").insert({
-        run_id: run.id,
-        bank_source_id: source.id,
-        bank_id: source.bank_id,
-        finding_type: "unreachable",
-        evidence_url: source.source_url,
-        detail: `Beklenmeyen hata: ${message}`,
-      });
-    }
-  }
-
-  const finalStatus = sourcesUnreachable === 0 ? "success" : sourcesUnreachable === sourcesChecked ? "failure" : "partial_failure";
-
-  // "11/11 kontrol edildi" TEK BAŞINA bir başarı ifadesi değildir — dört
-  // kategoriye ayrılmış sayım, gerçek durumu gösterir. Bir kaynağın birden
-  // fazla bandı değiştiyse (rate_changed) o kaynak yalnızca BİR kez
-  // "değişiklik bulundu" olarak sayılır (distinct bank_source_id).
-  const { data: runFindings } = await supabase
-    .from("rate_check_findings")
-    .select("bank_source_id, finding_type")
-    .eq("run_id", run.id);
-
-  const statusBySource = new Map<string, string>();
-  for (const f of runFindings ?? []) {
-    const prev = statusBySource.get(f.bank_source_id);
-    // Öncelik sırası: rate_changed > parse_error > unreachable > manual_required > accepted_difference/no_change
-    const rank: Record<string, number> = {
-      rate_changed: 4,
-      parse_error: 3,
-      unreachable: 3,
-      manual_required: 2,
-      accepted_difference: 1,
-      no_change: 1,
-    };
-    if (!prev || (rank[f.finding_type] ?? 0) > (rank[prev] ?? 0)) {
-      statusBySource.set(f.bank_source_id, f.finding_type);
-    }
-  }
-
-  const categoryCounts = {
-    auto_verified_no_change: 0, // Otomatik doğrulandı – değişiklik yok
-    change_pending_approval: 0, // Değişiklik bulundu – onay bekliyor
-    manual_check_required: 0, // Manuel kontrol gerekli (kalıcı manuel + ayrıştırma hatası)
-    source_unreachable: 0, // Kaynağa ulaşılamadı
-  };
-  for (const type of statusBySource.values()) {
-    if (type === "no_change" || type === "accepted_difference") categoryCounts.auto_verified_no_change++;
-    else if (type === "rate_changed") categoryCounts.change_pending_approval++;
-    else if (type === "manual_required" || type === "parse_error") categoryCounts.manual_check_required++;
-    else if (type === "unreachable") categoryCounts.source_unreachable++;
-  }
-
-  await supabase
-    .from("rate_check_runs")
-    .update({
-      status: finalStatus,
-      finished_at: new Date().toISOString(),
-      sources_checked: sourcesChecked,
-      sources_unreachable: sourcesUnreachable,
-      findings_created: findingsCreated,
-    })
-    .eq("id", run.id);
-
-  return new Response(
-    JSON.stringify({
-      run_id: run.id,
-      status: finalStatus,
-      dry_run: dryRun,
-      sources_checked: sourcesChecked,
-      sources_unreachable: sourcesUnreachable,
-      findings_created: findingsCreated,
-      categories: categoryCounts,
-      summary,
-    }),
-    { status: 200, headers: { "Content-Type": "application/json" } }
-  );
 });
