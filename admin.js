@@ -1313,7 +1313,20 @@ runCheckBtn.addEventListener("click", async () => {
     );
     await loadDailyCheck();
   } catch (err) {
-    showToast("Kontrol çalıştırılamadı: " + err.message, true);
+    // fetch() tarayıcı seviyesinde engellendiğinde (ör. CORS preflight
+    // reddi, DNS/ağ hatası) TypeError fırlatır ve mesajı tarayıcıya göre
+    // değişen, kullanıcıya anlamsız gelen İngilizce bir metindir ("Failed
+    // to fetch", "NetworkError…" vb.) — ham hâliyle GÖSTERİLMEZ. Gerçek
+    // HTTP hataları (yukarıdaki !res.ok dalı) zaten kendi status/gövde
+    // mesajını koruyarak ayrı ele alınıyor, bu blok yalnızca fetch'in
+    // KENDİSİ hiç tamamlanamadığında çalışır.
+    const isNetworkLevelFailure = err instanceof TypeError;
+    const userMessage = isNetworkLevelFailure
+      ? "Kontrol servisine tarayıcıdan ulaşılamadı. Bağlantı veya servis erişimi kontrol edilmeli."
+      : "Kontrol çalıştırılamadı: " + err.message;
+    showToast(userMessage, true);
+    // Teknik ayrıntı yalnızca konsola yazılır (secret/token asla loglanmaz).
+    console.error("Şimdi Kontrol Et başarısız:", err);
   } finally {
     runCheckBtn.disabled = false;
     runCheckBtn.textContent = "Şimdi Kontrol Et";

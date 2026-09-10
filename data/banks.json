@@ -44,7 +44,7 @@
     "altLimit": 2500000,
     "ustLimit": 7499999.99,
     "vadesizdeKalacak": 775000,
-    "yillikBrutOran": 0.445,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -52,7 +52,7 @@
     "altLimit": 7500000,
     "ustLimit": 17499999.99,
     "vadesizdeKalacak": 1750000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.445,
     "not": ""
   },
   {
@@ -60,7 +60,7 @@
     "altLimit": 17500000,
     "ustLimit": 34999999.99,
     "vadesizdeKalacak": 3000000,
-    "yillikBrutOran": 0.445,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -68,7 +68,7 @@
     "altLimit": 35000000,
     "ustLimit": 75000000,
     "vadesizdeKalacak": 5000000,
-    "yillikBrutOran": 0.435,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
@@ -496,7 +496,7 @@
     "altLimit": 250000.01,
     "ustLimit": 500000,
     "vadesizdeKalacak": 40000,
-    "yillikBrutOran": 0.45,
+    "yillikBrutOran": 0.44,
     "not": ""
   },
   {
@@ -512,7 +512,7 @@
     "altLimit": 1000000.01,
     "ustLimit": 1500000,
     "vadesizdeKalacak": 150000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
@@ -520,7 +520,7 @@
     "altLimit": 1500000.01,
     "ustLimit": 2000000,
     "vadesizdeKalacak": 175000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
@@ -528,7 +528,7 @@
     "altLimit": 2000000.01,
     "ustLimit": 3000000,
     "vadesizdeKalacak": 250000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
@@ -536,7 +536,7 @@
     "altLimit": 3000000.01,
     "ustLimit": 4000000,
     "vadesizdeKalacak": 350000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
@@ -544,7 +544,7 @@
     "altLimit": 4000000.01,
     "ustLimit": 5000000,
     "vadesizdeKalacak": 450000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
@@ -552,7 +552,7 @@
     "altLimit": 5000000.01,
     "ustLimit": 7500000,
     "vadesizdeKalacak": 600000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
@@ -560,7 +560,7 @@
     "altLimit": 7500000.01,
     "ustLimit": 10000000,
     "vadesizdeKalacak": 900000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {
@@ -568,7 +568,7 @@
     "altLimit": 10000000.01,
     "ustLimit": 15000000,
     "vadesizdeKalacak": 1500000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "not": ""
   },
   {

@@ -33,6 +33,61 @@ const EPS_MONEY = 1; // TL toleransı (yuvarlama)
 const EPS_RATE = 0.0005; // oran toleransı (yüzde puanı olarak %0.05)
 
 // ---------------------------------------------------------------------------
+// CORS — tarayıcıdan gelen istekler (admin panelindeki "Şimdi Kontrol Et")
+// ---------------------------------------------------------------------------
+//
+// Kök neden: bu fonksiyon önceden OPTIONS preflight'a hiç yanıt vermiyor ve
+// hiçbir yanıtına Access-Control-Allow-Origin eklemiyordu. Tarayıcı,
+// Authorization/apikey/Content-Type başlıkları taşıyan bir POST'tan önce
+// otomatik olarak bir OPTIONS preflight gönderir; sunucu bunu karşılamayınca
+// tarayıcı isteği hiç göndermeden "Failed to fetch" ile engeller. Cron/retry
+// çağrıları pg_net üzerinden (tarayıcı DEĞİL) geldiği için Origin header'ı
+// taşımaz ve bu mekanizmadan hiç etkilenmez.
+//
+// CORS yalnızca "hangi tarayıcı origin'i bu yanıtı okuyabilir" sorusuna
+// cevap verir — YETKİLENDİRME DEĞİLDİR. Origin izinli olsa bile admin
+// JWT / x-cron-secret kontrolü ayrıca ve değişmeden uygulanır.
+const ALLOWED_ORIGINS = new Set([
+  "https://webappuygulamalar.github.io",
+  "http://localhost:8080",
+  "http://127.0.0.1:8080",
+]);
+
+// Origin tam eşleşmeli — listede yoksa (veya Origin header'ı hiç yoksa,
+// örn. cron/retry çağrılarında) null döner ve Access-Control-Allow-Origin
+// HİÇ eklenmez. Rastgele origin'e asla "*" verilmez.
+function getAllowedOrigin(req: Request): string | null {
+  const origin = req.headers.get("origin");
+  if (origin && ALLOWED_ORIGINS.has(origin)) return origin;
+  return null;
+}
+
+// Vary: Origin HER ZAMAN eklenir (origin'e göre farklı yanıt üretildiği
+// için önbellekleme doğruluğu adına) — Access-Control-Allow-* başlıkları
+// yalnızca origin izinliyse eklenir.
+function corsHeaders(req: Request): HeadersInit {
+  const allowedOrigin = getAllowedOrigin(req);
+  const headers: Record<string, string> = { Vary: "Origin" };
+  if (allowedOrigin) {
+    headers["Access-Control-Allow-Origin"] = allowedOrigin;
+    headers["Access-Control-Allow-Headers"] = "authorization, x-client-info, apikey, content-type";
+    headers["Access-Control-Allow-Methods"] = "POST, OPTIONS";
+  }
+  return headers;
+}
+
+// Fonksiyondaki HER Response bunun üzerinden döner — tekil bir yerde CORS
+// başlıkları eklenir, unutulma riski olmaz. service_role/CRON_SECRET asla
+// gövdeye veya başlığa yazılmaz (yalnızca sunucu-içi env değişkeni olarak
+// kalır).
+function jsonResponse(req: Request, body: unknown, status: number): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...corsHeaders(req) },
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Türkçe sayı/yüzde biçimlendirme yardımcıları
 // ---------------------------------------------------------------------------
 
@@ -1362,11 +1417,20 @@ function formatAttemptsNote(attempts: BankSourcesAttempt[]): string | null {
 }
 
 Deno.serve(async (req: Request) => {
+  // Preflight, yetkilendirme kontrolünden ÖNCE karşılanır — tarayıcı OPTIONS
+  // isteğine kimlik bilgisi göndermez, bu yüzden isAuthorized burada hiç
+  // çağrılmaz. Origin izinli değilse Access-Control-Allow-Origin eklenmez;
+  // tarayıcı bu durumda asıl POST'u zaten göndermeyecektir.
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders(req) });
+  }
+
+  if (req.method !== "POST") {
+    return jsonResponse(req, { error: "Method Not Allowed" }, 405);
+  }
+
   if (!(await isAuthorized(req))) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse(req, { error: "Unauthorized" }, 401);
   }
 
   let dryRun = false;
@@ -1408,17 +1472,11 @@ Deno.serve(async (req: Request) => {
       const decision = decisionRows?.[0];
 
       if (decisionErr || !decision) {
-        return new Response(
-          JSON.stringify({ error: "Retry kararı alınamadı", detail: decisionErr?.message }),
-          { status: 500, headers: { "Content-Type": "application/json" } }
-        );
+        return jsonResponse(req, { error: "Retry kararı alınamadı", detail: decisionErr?.message }, 500);
       }
 
       if (decision.action === "skip") {
-        return new Response(
-          JSON.stringify({ skipped: true, reason: decision.reason, run_id: decision.run_id }),
-          { status: 200, headers: { "Content-Type": "application/json" } }
-        );
+        return jsonResponse(req, { skipped: true, reason: decision.reason, run_id: decision.run_id }, 200);
       }
 
       // action === 'run': RPC zaten 'running' durumunda bir satır açtı,
@@ -1433,10 +1491,7 @@ Deno.serve(async (req: Request) => {
         .single();
 
       if (runErr || !run) {
-        return new Response(JSON.stringify({ error: "rate_check_runs oluşturulamadı", detail: runErr?.message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse(req, { error: "rate_check_runs oluşturulamadı", detail: runErr?.message }, 500);
       }
       runId = run.id;
     }
@@ -1470,10 +1525,7 @@ Deno.serve(async (req: Request) => {
           notes: combinedNote,
         })
         .eq("id", runId);
-      return new Response(JSON.stringify({ error: "bank_sources okunamadı", run_id: runId }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
+      return jsonResponse(req, { error: "bank_sources okunamadı", run_id: runId }, 500);
     }
 
     const allSources = sourcesResult.sources as unknown as BankSourceRow[];
@@ -1597,8 +1649,9 @@ Deno.serve(async (req: Request) => {
       })
       .eq("id", runId);
 
-    return new Response(
-      JSON.stringify({
+    return jsonResponse(
+      req,
+      {
         run_id: runId,
         status: finalStatus,
         dry_run: dryRun,
@@ -1609,8 +1662,8 @@ Deno.serve(async (req: Request) => {
         summary,
         duration_ms: durationMs,
         source_timings_ms: fetchTimingsMs,
-      }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+      },
+      200
     );
   } catch (err) {
     // Beklenmeyen bir hata (kod hatası, altyapı sorunu vb.) çalışmayı 500'e
@@ -1649,9 +1702,6 @@ Deno.serve(async (req: Request) => {
       // Son çare: bookkeeping bile başarısız olursa sessizce geç — asıl
       // hatayı gizlemeden 500 dönmeye devam et.
     }
-    return new Response(JSON.stringify({ error: "Beklenmeyen hata", detail: message, run_id: runId }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse(req, { error: "Beklenmeyen hata", detail: message, run_id: runId }, 500);
   }
 });
