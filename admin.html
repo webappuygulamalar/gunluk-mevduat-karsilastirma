@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Günlük Mevduat — Yönetim Paneli</title>
   <meta name="robots" content="noindex, nofollow" />
-  <link rel="stylesheet" href="admin.css?v=4" />
+  <link rel="stylesheet" href="admin.css?v=6" />
 </head>
 <body>
 
@@ -158,24 +158,8 @@
     <section class="card">
       <h2>Ürünler ve Aktif Oran Aralıkları</h2>
       <p class="muted">Bu tablo doğrudan düzenlenemez. Bir satır için değişiklik önerdiğinizde, kayıt önce "onay bekliyor" durumunda <code>rate_change_requests</code> tablosuna eklenir.</p>
-      <div class="table-wrap">
-        <table id="rates-table">
-          <thead>
-            <tr>
-              <th>Banka / Ürün</th>
-              <th>Alt Limit</th>
-              <th>Üst Limit</th>
-              <th>Vadesizde Kalacak</th>
-              <th>Yıllık Brüt Oran</th>
-              <th>Gerekli Fon</th>
-              <th>Not</th>
-              <th>İşlem</th>
-            </tr>
-          </thead>
-          <tbody id="rates-tbody">
-            <tr><td colspan="8" class="muted">Yükleniyor…</td></tr>
-          </tbody>
-        </table>
+      <div id="rates-groups">
+        <p class="muted">Yükleniyor…</p>
       </div>
     </section>
 
@@ -319,7 +303,21 @@
     </form>
   </dialog>
 
+  <!-- Bant düzenleme seçim penceresi — mevcut Güncelle Öner / Pasifleştir
+       Öner / Kaydet ve Yayınla akışlarına DAĞITIM yapar, kendi RPC/insert
+       mantığı yoktur. -->
+  <dialog id="edit-rate-dialog" class="note-dialog">
+    <h2 id="edit-rate-title">Düzenle</h2>
+    <dl class="proposal-fields" id="edit-rate-summary"></dl>
+    <div class="button-row" style="margin-top:14px; flex-wrap: wrap;">
+      <button type="button" id="edit-rate-propose-update">Güncelle Öner</button>
+      <button type="button" id="edit-rate-propose-disable" class="secondary">Pasifleştir Öner</button>
+      <button type="button" id="edit-rate-manual">Kaydet ve Yayınla</button>
+    </div>
+    <button type="button" id="edit-rate-close" class="secondary" style="margin-top:10px;">Kapat</button>
+  </dialog>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/dist/umd/supabase.min.js"></script>
-  <script src="admin.js?v=5"></script>
+  <script src="admin.js?v=6"></script>
 </body>
 </html>

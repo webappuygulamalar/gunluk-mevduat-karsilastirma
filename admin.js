@@ -22,7 +22,7 @@ const deniedMessage = document.getElementById("denied-message");
 const whoami = document.getElementById("whoami");
 const toast = document.getElementById("toast");
 
-const ratesTbody = document.getElementById("rates-tbody");
+const ratesGroupsContainer = document.getElementById("rates-groups");
 const requestsTbody = document.getElementById("requests-tbody");
 const auditTbody = document.getElementById("audit-tbody");
 
@@ -146,8 +146,13 @@ async function loadAll() {
   await Promise.all([loadActiveRates(), loadRequests(), loadAuditLog(), loadDailyCheck(), loadAcceptedDiffs()]);
 }
 
+// Sayfalar arası yenilemede (loadAll()) hangi banka gruplarının açık
+// olduğu korunur — kullanıcı bir işlem yaptığında liste yenilenir ama
+// baktığı grup aniden kapanmaz.
+const openRateBankGroups = new Set();
+
 async function loadActiveRates() {
-  ratesTbody.innerHTML = `<tr><td colspan="8" class="muted">Yükleniyor…</td></tr>`;
+  ratesGroupsContainer.innerHTML = `<p class="muted">Yükleniyor…</p>`;
 
   // banks!inner + is_enabled=true: pasifleştirilmiş ürünler (ör. mükerrer
   // olduğu için kapatılan "Odeabank Oksijen Hoş Geldin") bu "aktif oranlar"
@@ -165,52 +170,153 @@ async function loadActiveRates() {
     .order("alt_limit");
 
   if (error) {
-    ratesTbody.innerHTML = `<tr><td colspan="8" class="error-text">Hata: ${error.message}</td></tr>`;
+    ratesGroupsContainer.innerHTML = `<p class="error-text">Hata: ${escapeHtml(error.message)}</p>`;
     return;
   }
 
   activeRatesById = new Map(data.map((r) => [r.id, r]));
 
   if (data.length === 0) {
-    ratesTbody.innerHTML = `<tr><td colspan="8" class="muted">Aktif oran aralığı bulunamadı.</td></tr>`;
+    ratesGroupsContainer.innerHTML = `<p class="muted">Aktif oran aralığı bulunamadı.</p>`;
     return;
   }
 
-  ratesTbody.innerHTML = "";
+  // Sıra korunur (sorgu zaten banka adına, sonra alt limite göre sıralı
+  // geliyor) — banka adına göre grupla, bant sayısını grup başlığında göster.
+  const bandsByBank = new Map();
   for (const r of data) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${escapeHtml(r.banks ? r.banks.name : r.bank_id)}</td>
-      <td>${fmtMoney(r.alt_limit)}</td>
-      <td>${fmtMoney(r.ust_limit)}</td>
-      <td>${fmtMoney(r.vadesizde_kalacak)}</td>
-      <td>${fmtPercent(r.yillik_brut_oran)}</td>
-      <td>${r.gerekli_fon_bakiyesi ? fmtMoney(r.gerekli_fon_bakiyesi) : "—"}</td>
-      <td>${r.note ? `<button type="button" class="link-btn" data-action="show-note" data-id="${r.id}">Notu Gör</button>` : `<span class="muted">—</span>`}</td>
-      <td class="actions-cell">
-        <button type="button" class="link-btn" data-action="update" data-id="${r.id}">Güncelle Öner</button>
-        <button type="button" class="link-btn danger" data-action="disable" data-id="${r.id}">Pasifleştir Öner</button>
-        <button type="button" class="link-btn" data-action="manual-edit" data-id="${r.id}">Kaydet ve Yayınla</button>
-      </td>
+    const bankName = r.banks ? r.banks.name : r.bank_id;
+    if (!bandsByBank.has(bankName)) bandsByBank.set(bankName, []);
+    bandsByBank.get(bankName).push(r);
+  }
+
+  ratesGroupsContainer.innerHTML = "";
+  for (const [bankName, bands] of bandsByBank) {
+    const details = document.createElement("details");
+    details.className = "rate-bank-group";
+    if (openRateBankGroups.has(bankName)) details.open = true;
+
+    const summary = document.createElement("summary");
+    summary.innerHTML = `<span class="rate-bank-group-name">${escapeHtml(bankName)}</span><span class="rate-bank-group-count">${bands.length} oran aralığı</span>`;
+    details.appendChild(summary);
+
+    details.addEventListener("toggle", () => {
+      if (details.open) openRateBankGroups.add(bankName);
+      else openRateBankGroups.delete(bankName);
+    });
+
+    const wrap = document.createElement("div");
+    wrap.className = "table-wrap";
+    const table = document.createElement("table");
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>Tutar Aralığı</th>
+          <th>Vadesizde Kalacak</th>
+          <th>Yıllık Brüt Oran</th>
+          <th>Gerekli Fon</th>
+          <th>Not</th>
+          <th>İşlem</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
     `;
-    ratesTbody.appendChild(tr);
+    const tbody = table.querySelector("tbody");
+    for (const r of bands) {
+      const vadesizCell =
+        r.vadesiz_hesaplama_tipi === "yuzde"
+          ? `Bakiyenin %${numberFmt.format(r.vadesiz_oran ?? 0)}'i`
+          : fmtMoney(r.vadesizde_kalacak);
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(fmtRangeTR(r.alt_limit, r.ust_limit))}</td>
+        <td>${escapeHtml(vadesizCell)}</td>
+        <td>${fmtPercent(r.yillik_brut_oran)}</td>
+        <td>${r.gerekli_fon_bakiyesi ? fmtMoney(r.gerekli_fon_bakiyesi) : "—"}</td>
+        <td>${r.note ? `<button type="button" class="link-btn" data-action="show-note" data-id="${r.id}">Notu Gör</button>` : `<span class="muted">—</span>`}</td>
+        <td><button type="button" class="link-btn" data-action="edit" data-id="${r.id}">Düzenle</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+    wrap.appendChild(table);
+    details.appendChild(wrap);
+    ratesGroupsContainer.appendChild(details);
   }
 }
 
-ratesTbody.addEventListener("click", (e) => {
+ratesGroupsContainer.addEventListener("click", (e) => {
   const btn = e.target.closest("button[data-action]");
   if (!btn) return;
   const rate = activeRatesById.get(btn.dataset.id);
   if (!rate) return;
-  if (btn.dataset.action === "update") {
-    openProposalForm(rate, "update");
-  } else if (btn.dataset.action === "disable") {
-    submitDisableProposal(rate);
-  } else if (btn.dataset.action === "show-note") {
+  if (btn.dataset.action === "show-note") {
     openNoteDialog(rate.note);
-  } else if (btn.dataset.action === "manual-edit") {
-    openManualEditDialog(rate);
+  } else if (btn.dataset.action === "edit") {
+    openEditRateDialog(rate);
   }
+});
+
+// ---------------------------------------------------------------------------
+// "Düzenle" penceresi — kendi yazma mantığı YOK. Yalnızca özet gösterir ve
+// mevcut, zaten güvenliği doğrulanmış üç akıştan birine (Güncelle Öner /
+// Pasifleştir Öner / Kaydet ve Yayınla) DAĞITIM yapar. Pencereyi açmak
+// hiçbir kayıt oluşturmaz/değiştirmez.
+// ---------------------------------------------------------------------------
+
+const editRateDialog = document.getElementById("edit-rate-dialog");
+let editRateContext = null;
+
+function openEditRateDialog(rate) {
+  editRateContext = rate;
+  const bankName = rate.banks ? rate.banks.name : rate.bank_id;
+  document.getElementById("edit-rate-title").textContent = `Düzenle — ${bankName}`;
+  const vadesizText =
+    rate.vadesiz_hesaplama_tipi === "yuzde"
+      ? `Bakiyenin %${numberFmt.format(rate.vadesiz_oran ?? 0)}'i`
+      : fmtMoney(rate.vadesizde_kalacak);
+  document.getElementById("edit-rate-summary").innerHTML = `
+    <dt>Banka / Ürün</dt><dd>${escapeHtml(bankName)}</dd>
+    <dt>Tutar Aralığı</dt><dd>${escapeHtml(fmtRangeTR(rate.alt_limit, rate.ust_limit))}</dd>
+    <dt>Mevcut Oran</dt><dd>${fmtPercent(rate.yillik_brut_oran)}</dd>
+    <dt>Vadesizde Kalacak</dt><dd>${escapeHtml(vadesizText)}</dd>
+    <dt>Gerekli Fon</dt><dd>${rate.gerekli_fon_bakiyesi ? fmtMoney(rate.gerekli_fon_bakiyesi) : "—"}</dd>
+    <dt>Not</dt><dd>${rate.note ? escapeHtml(rate.note) : "—"}</dd>
+  `;
+  editRateDialog.showModal();
+}
+
+document.getElementById("edit-rate-close").addEventListener("click", () => {
+  editRateDialog.close();
+});
+
+editRateDialog.addEventListener("click", (e) => {
+  const rect = editRateDialog.getBoundingClientRect();
+  const clickedInside =
+    e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
+  if (!clickedInside) {
+    editRateDialog.close();
+  }
+});
+
+document.getElementById("edit-rate-propose-update").addEventListener("click", () => {
+  if (!editRateContext) return;
+  const rate = editRateContext;
+  editRateDialog.close();
+  openProposalForm(rate, "update");
+});
+
+document.getElementById("edit-rate-propose-disable").addEventListener("click", () => {
+  if (!editRateContext) return;
+  const rate = editRateContext;
+  editRateDialog.close();
+  submitDisableProposal(rate);
+});
+
+document.getElementById("edit-rate-manual").addEventListener("click", () => {
+  if (!editRateContext) return;
+  const rate = editRateContext;
+  editRateDialog.close();
+  openManualEditDialog(rate);
 });
 
 // ---------------------------------------------------------------------------

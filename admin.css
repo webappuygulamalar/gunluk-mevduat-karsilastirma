@@ -423,6 +423,43 @@ code {
   background: var(--bg);
 }
 
+/* Ürünler ve Aktif Oran Aralıkları — banka bazında açılır/kapanır gruplar */
+#rates-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rate-bank-group {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+.rate-bank-group + .rate-bank-group {
+  margin-top: 0;
+}
+.rate-bank-group summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 2px 0;
+}
+.rate-bank-group summary::-webkit-details-marker { display: none; }
+.rate-bank-group summary::before { content: "▸ "; color: var(--muted); }
+.rate-bank-group[open] summary::before { content: "▾ "; }
+.rate-bank-group-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.rate-bank-group-count {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.rate-bank-group .table-wrap {
+  margin-top: 12px;
+}
+
 .raw-evidence-box {
   margin-top: 6px;
   font-size: 0.78rem;
