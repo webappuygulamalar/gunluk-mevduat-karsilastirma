@@ -1,4 +1,4 @@
-const CACHE_NAME = "gunluk-mevduat-v16";
+const CACHE_NAME = "gunluk-mevduat-v18";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -55,6 +55,25 @@ self.addEventListener("fetch", (event) => {
   // reddedilip app.js'in kendi data/banks.json yedeğine düşmesini sağlar
   // (burada eski bir Supabase yanıtıyla sessizce maskelenmez).
   if (url.hostname.endsWith(".supabase.co")) return;
+
+  // Admin paneli (admin.html/js/css) bu service worker'ın APP_SHELL'inin
+  // parçası DEĞİLDİR ve asla önbelleğe alınmamalıdır — sw.js kayıtı
+  // index.html/app.js üzerinden yapılıp scope kökü kapsadığından, admin.html
+  // hiç kendi service worker'ını kaydetmese bile aynı scope altında bu
+  // worker'ın fetch handler'ına tabi olur. Daha önce (v16 ve öncesi)
+  // networkFirst ile "önce ağ, olmazsa önbellek" uygulanıyordu; ağ isteği
+  // her zaman başarılı olsa bile yanıt yine de cache.put ile saklanıyordu —
+  // bu da bir sonraki sürüm admin dosyaları DEĞİŞTİĞİNDE, o an aktif olan
+  // ESKİ service worker (henüz yeni sw.js'e geçiş yapmamış) hâlâ kendi eski
+  // CACHE_NAME'i altında admin.* için networkFirst çalıştırmaya devam eder
+  // ve ağ yanıtı gecikir/başarısız olursa eski admin paneli servis
+  // edilebilirdi. Artık admin.* ve sw.js'in kendisi bu worker tarafından
+  // TAMAMEN görmezden gelinir — tarayıcı bu istekleri doğrudan ağa
+  // gönderir, hiçbir Cache Storage kaydı oluşmaz/okunmaz.
+  if (url.pathname.endsWith("/admin.html") || url.pathname.endsWith("/admin.js") ||
+      url.pathname.endsWith("/admin.css") || url.pathname.endsWith("/sw.js")) {
+    return;
+  }
 
   const isBankData = url.pathname.endsWith("/data/banks.json");
 

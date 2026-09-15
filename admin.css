@@ -460,6 +460,34 @@ code {
   margin-top: 12px;
 }
 
+/* "Yeni Oran" girişi — masaüstünde kısa/okunabilir, sağ taraf kesilmeden;
+   .table-wrap zaten yatay kaydırma sağladığı için mobilde taşma sorun
+   değildir. */
+.rate-new-input {
+  width: 84px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.rate-new-input:disabled {
+  background: var(--bg);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.rate-new-input-invalid {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+.rate-bulk-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.rate-bulk-counter {
+  font-size: 0.82rem;
+}
+
 .raw-evidence-box {
   margin-top: 6px;
   font-size: 0.78rem;

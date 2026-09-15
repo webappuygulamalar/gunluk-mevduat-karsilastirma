@@ -181,6 +181,17 @@ async function loadActiveRates() {
     return;
   }
 
+  // "Yeni Oran" girişinde bir bant için zaten onay bekleyen bir talep varsa
+  // input pasifleştirilip "Onay bekliyor" yazılır — aynı bant için ikinci
+  // bir talep açılmasının önüne istemci tarafında da geçilir. Asıl güvence
+  // yine propose_rate_changes_bulk RPC'sinin kendi pending kontrolüdür; bu
+  // yalnızca kullanıcı deneyimini netleştirir.
+  const { data: pendingRows } = await client
+    .from("rate_change_requests")
+    .select("bank_rate_id")
+    .eq("status", "pending");
+  const pendingBankRateIds = new Set((pendingRows ?? []).map((r) => r.bank_rate_id));
+
   // Sıra korunur (sorgu zaten banka adına, sonra alt limite göre sıralı
   // geliyor) — banka adına göre grupla, bant sayısını grup başlığında göster.
   const bandsByBank = new Map();
@@ -213,7 +224,8 @@ async function loadActiveRates() {
         <tr>
           <th>Tutar Aralığı</th>
           <th>Vadesizde Kalacak</th>
-          <th>Yıllık Brüt Oran</th>
+          <th>Mevcut Oran</th>
+          <th>Yeni Oran</th>
           <th>Gerekli Fon</th>
           <th>Not</th>
           <th>İşlem</th>
@@ -227,11 +239,18 @@ async function loadActiveRates() {
         r.vadesiz_hesaplama_tipi === "yuzde"
           ? `Bakiyenin %${numberFmt.format(r.vadesiz_oran ?? 0)}'i`
           : fmtMoney(r.vadesizde_kalacak);
+      const isPending = pendingBankRateIds.has(r.id);
+      const newRateCell = isPending
+        ? `<input type="text" class="rate-new-input" disabled placeholder="Onay bekliyor" aria-label="${escapeHtml(bankName)} — onay bekliyor" />`
+        : `<input type="text" class="rate-new-input" inputmode="decimal" autocomplete="off" spellcheck="false"
+             data-id="${r.id}" placeholder="${escapeHtml(fmtPercentInputPlaceholder(r.yillik_brut_oran))}"
+             aria-label="${escapeHtml(bankName)} — ${escapeHtml(fmtRangeTR(r.alt_limit, r.ust_limit))} için yeni oran" />`;
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${escapeHtml(fmtRangeTR(r.alt_limit, r.ust_limit))}</td>
         <td>${escapeHtml(vadesizCell)}</td>
         <td>${fmtPercent(r.yillik_brut_oran)}</td>
+        <td>${newRateCell}</td>
         <td>${r.gerekli_fon_bakiyesi ? fmtMoney(r.gerekli_fon_bakiyesi) : "—"}</td>
         <td>${r.note ? `<button type="button" class="link-btn" data-action="show-note" data-id="${r.id}">Notu Gör</button>` : `<span class="muted">—</span>`}</td>
         <td><button type="button" class="link-btn" data-action="edit" data-id="${r.id}">Düzenle</button></td>
@@ -240,6 +259,17 @@ async function loadActiveRates() {
     }
     wrap.appendChild(table);
     details.appendChild(wrap);
+
+    const bulkRow = document.createElement("div");
+    bulkRow.className = "rate-bulk-row";
+    bulkRow.dataset.bankName = bankName;
+    bulkRow.innerHTML = `
+      <button type="button" class="rate-bulk-submit" disabled>Değişiklikleri Onaya Gönder</button>
+      <button type="button" class="rate-bulk-clear secondary" disabled>Temizle</button>
+      <span class="muted rate-bulk-counter"></span>
+    `;
+    details.appendChild(bulkRow);
+
     ratesGroupsContainer.appendChild(details);
   }
 }
@@ -255,6 +285,172 @@ ratesGroupsContainer.addEventListener("click", (e) => {
     openEditRateDialog(rate);
   }
 });
+
+// ---------------------------------------------------------------------------
+// "Ürünler ve Aktif Oran Aralıkları" — banka başına toplu "Yeni Oran" girişi.
+// Tek yazma yolu propose_rate_changes_bulk RPC'sidir; bu ekrandan hiçbir
+// satır doğrudan bank_rates'e yazmaz. Girilen değerler yalnızca "önerilen
+// yeni oran" olarak pending kuyruğuna eklenir — yayınlamak için kullanıcı
+// ayrıca "Oran Kontrolü" tablosundan mevcut "Seçilenleri Onayla ve Yayınla"
+// akışını kullanır (iki aşamalı güvenli yapı korunur).
+// ---------------------------------------------------------------------------
+
+// Kabul edilen biçimler: "41", "41,0", "41,00", "%41", "41.00". Virgül VE
+// nokta AYNI ANDA gelirse (ör. yanlışlıkla "1.234,56" yazılırsa) reddedilir
+// — yüzde girişinde binlik ayracı beklenmez. Dönüş: 0-1 aralığında kesir
+// (ör. 41 -> 0.41) ya da geçersizse null.
+function parseRateInputToFraction(raw) {
+  if (raw === null || raw === undefined) return null;
+  let s = String(raw).trim();
+  if (s === "") return null;
+  s = s.replace(/%/g, "").trim();
+  const hasComma = s.includes(",");
+  const hasDot = s.includes(".");
+  if (hasComma && hasDot) return null;
+  if (hasComma) s = s.replace(",", ".");
+  if (!/^\d+(\.\d+)?$/.test(s)) return null;
+  const num = Number(s);
+  if (!Number.isFinite(num) || num < 0 || num > 100) return null;
+  return num / 100;
+}
+
+function fmtPercentInputPlaceholder(n) {
+  return n === null || n === undefined ? "" : percentFmt.format(n * 100);
+}
+
+function round4(n) {
+  return Math.round(n * 10000) / 10000;
+}
+
+// Bankaya göre çift gönderim/çift tıklama koruması: aynı anda yalnızca bir
+// bankanın toplu önerisi gönderilebilir; farklı bankalar birbirinden
+// bağımsız çalışır.
+const rateBulkInFlight = new Set();
+
+function getRateBankGroupEl(el) {
+  return el.closest(".rate-bank-group");
+}
+
+// Bir banka grubundaki tüm "Yeni Oran" girişlerini tarar: geçersiz/boş
+// girişleri işaretler, mevcut oranla aynı olanları değişiklik SAYMAZ,
+// yalnızca gerçekten farklı ve geçerli girişleri sayaç/butonlara yansıtır.
+function updateRateBulkUI(groupEl) {
+  const inputs = Array.from(groupEl.querySelectorAll(".rate-new-input:not(:disabled)"));
+  let changedCount = 0;
+  let hasAnyText = false;
+
+  for (const input of inputs) {
+    const raw = input.value;
+    input.classList.remove("rate-new-input-invalid");
+    if (raw.trim() === "") continue;
+    hasAnyText = true;
+
+    const fraction = parseRateInputToFraction(raw);
+    const rate = activeRatesById.get(input.dataset.id);
+    if (fraction === null || !rate) {
+      input.classList.add("rate-new-input-invalid");
+      continue;
+    }
+    if (round4(fraction) === round4(rate.yillik_brut_oran)) continue; // aynı oran -> değişiklik değil
+    changedCount++;
+  }
+
+  const bulkRow = groupEl.querySelector(".rate-bulk-row");
+  const bankName = bulkRow ? bulkRow.dataset.bankName : "";
+  const inFlight = rateBulkInFlight.has(bankName);
+
+  const submitBtn = groupEl.querySelector(".rate-bulk-submit");
+  const clearBtn = groupEl.querySelector(".rate-bulk-clear");
+  const counterEl = groupEl.querySelector(".rate-bulk-counter");
+  if (submitBtn) submitBtn.disabled = changedCount === 0 || inFlight;
+  if (clearBtn) clearBtn.disabled = !hasAnyText || inFlight;
+  if (counterEl) counterEl.textContent = changedCount > 0 ? `${changedCount} oran değiştirildi` : "";
+}
+
+ratesGroupsContainer.addEventListener("input", (e) => {
+  if (!e.target.matches(".rate-new-input")) return;
+  const groupEl = getRateBankGroupEl(e.target);
+  if (groupEl) updateRateBulkUI(groupEl);
+});
+
+ratesGroupsContainer.addEventListener("click", async (e) => {
+  const clearBtn = e.target.closest(".rate-bulk-clear");
+  if (clearBtn) {
+    const groupEl = getRateBankGroupEl(clearBtn);
+    if (!groupEl) return;
+    groupEl.querySelectorAll(".rate-new-input:not(:disabled)").forEach((inp) => {
+      inp.value = "";
+      inp.classList.remove("rate-new-input-invalid");
+    });
+    updateRateBulkUI(groupEl);
+    return;
+  }
+
+  const submitBtn = e.target.closest(".rate-bulk-submit");
+  if (submitBtn) {
+    await submitRateBulkProposal(submitBtn);
+  }
+});
+
+async function submitRateBulkProposal(submitBtn) {
+  const groupEl = getRateBankGroupEl(submitBtn);
+  if (!groupEl) return;
+  const bulkRow = groupEl.querySelector(".rate-bulk-row");
+  const bankName = bulkRow.dataset.bankName;
+
+  if (rateBulkInFlight.has(bankName)) return; // çift tıklama koruması
+
+  const inputs = Array.from(groupEl.querySelectorAll(".rate-new-input:not(:disabled)"));
+  const changed = [];
+  for (const input of inputs) {
+    const raw = input.value.trim();
+    if (raw === "") continue;
+    const fraction = parseRateInputToFraction(raw);
+    const rate = activeRatesById.get(input.dataset.id);
+    if (fraction === null || !rate) continue; // geçersiz -> zaten dışarıda bırakılır
+    if (round4(fraction) === round4(rate.yillik_brut_oran)) continue;
+    changed.push({ id: input.dataset.id, rate, fraction });
+  }
+
+  if (changed.length === 0) return;
+
+  const lines = changed
+    .map(
+      (c) =>
+        `- ${fmtRangeTR(c.rate.alt_limit, c.rate.ust_limit)}: ${fmtPercentSimple(c.rate.yillik_brut_oran)} → ${fmtPercentSimple(c.fraction)}`
+    )
+    .join("\n");
+  const confirmMsg = `${bankName} için ${changed.length} oran değişikliğini onaya göndermek üzeresiniz:\n${lines}\n\nDevam edilsin mi?`;
+  if (!confirm(confirmMsg)) return;
+
+  rateBulkInFlight.add(bankName);
+  const clearBtn = groupEl.querySelector(".rate-bulk-clear");
+  const originalText = submitBtn.textContent;
+  submitBtn.disabled = true;
+  if (clearBtn) clearBtn.disabled = true;
+  submitBtn.textContent = "Gönderiliyor…";
+
+  const items = changed.map((c) => ({
+    bank_rate_id: c.id,
+    expected_yillik_brut_oran: c.rate.yillik_brut_oran,
+    new_yillik_brut_oran: c.fraction,
+  }));
+
+  const { error } = await client.rpc("propose_rate_changes_bulk", { p_items: items });
+
+  rateBulkInFlight.delete(bankName);
+  submitBtn.textContent = originalText;
+
+  if (error) {
+    showToast("Hata: " + error.message, true);
+    submitBtn.disabled = false;
+    if (clearBtn) clearBtn.disabled = false;
+    return;
+  }
+
+  showToast(`${bankName} için ${changed.length} oran değişikliği onaya gönderildi.`, false);
+  await loadAll();
+}
 
 // ---------------------------------------------------------------------------
 // "Düzenle" penceresi — kendi yazma mantığı YOK. Yalnızca özet gösterir ve
