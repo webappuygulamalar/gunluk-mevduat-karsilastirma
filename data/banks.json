@@ -210,65 +210,65 @@
   {
     "banka": "Yapı Kredi",
     "altLimit": 10000,
-    "ustLimit": 49999,
+    "ustLimit": 49999.99,
     "vadesizdeKalacak": 5000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.41,
     "not": ""
   },
   {
     "banka": "Yapı Kredi",
     "altLimit": 50000,
-    "ustLimit": 99999,
+    "ustLimit": 99999.99,
     "vadesizdeKalacak": 10000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.41,
     "not": ""
   },
   {
     "banka": "Yapı Kredi",
     "altLimit": 100000,
-    "ustLimit": 249999,
+    "ustLimit": 249999.99,
     "vadesizdeKalacak": 20000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.41,
     "not": ""
   },
   {
     "banka": "Yapı Kredi",
     "altLimit": 250000,
-    "ustLimit": 499999,
+    "ustLimit": 499999.99,
     "vadesizdeKalacak": 40000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.41,
     "not": ""
   },
   {
     "banka": "Yapı Kredi",
     "altLimit": 500000,
-    "ustLimit": 999999,
+    "ustLimit": 999999.99,
     "vadesizdeKalacak": 75000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.41,
     "not": ""
   },
   {
     "banka": "Yapı Kredi",
     "altLimit": 1000000,
-    "ustLimit": 1999999,
+    "ustLimit": 1999999.99,
     "vadesizdeKalacak": 150000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.41,
     "not": ""
   },
   {
     "banka": "Yapı Kredi",
     "altLimit": 2000000,
-    "ustLimit": 2999999,
+    "ustLimit": 2999999.99,
     "vadesizdeKalacak": 250000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.41,
     "not": ""
   },
   {
     "banka": "Yapı Kredi",
     "altLimit": 3000000,
-    "ustLimit": 4999999,
+    "ustLimit": 4999999.99,
     "vadesizdeKalacak": 400000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.41,
     "not": ""
   },
   {
@@ -276,7 +276,7 @@
     "altLimit": 5000000,
     "ustLimit": 10000000,
     "vadesizdeKalacak": 700000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.41,
     "not": ""
   },
   {
