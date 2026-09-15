@@ -27,6 +27,10 @@ const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const CRON_SECRET = Deno.env.get("CRON_SECRET");
 
 const FETCH_TIMEOUT_MS = 15000;
+// Yapı Kredi'nin ikinci resmi kaynağı: mobilden yeni müşteri hoş geldin
+// kampanya sayfası — yalnızca EK bir aday oranı okumak için kullanılır,
+// ana ürün sayfası (bank_sources.source_url) zaten zorunlu/birincil kaynaktır.
+const YK_CAMPAIGN_URL = "https://www.yapikredi.com.tr/kampanyalar/detay/253761";
 const MIN_PLAUSIBLE_RATE = 0.03; // %3
 const MAX_PLAUSIBLE_RATE = 1.2; // %120
 const EPS_MONEY = 1; // TL toleransı (yuvarlama)
@@ -92,7 +96,7 @@ function jsonResponse(req: Request, body: unknown, status: number): Response {
 // ---------------------------------------------------------------------------
 
 /** "43,00%" veya "%43,00" -> 0.43 */
-function parseTRPercent(raw: string): number | null {
+export function parseTRPercent(raw: string): number | null {
   const cleaned = raw.replace(/%/g, "").replace(/\s/g, "").trim();
   if (!cleaned) return null;
   const normalized = cleaned.replace(/\./g, "").replace(",", ".");
@@ -102,7 +106,7 @@ function parseTRPercent(raw: string): number | null {
 }
 
 /** "7.500" veya "7.500 TL" veya "25.000,01" -> 7500 / 25000.01 (TR formatı: "." binlik ayırıcı, "," ondalık ayırıcı). */
-function parseTRMoney(raw: string): number | null {
+export function parseTRMoney(raw: string): number | null {
   const cleaned = raw.replace(/TL/gi, "").replace(/\s/g, "").trim();
   if (!cleaned) return null;
   // TR sayı biçimi: binlik ayırıcı HER ZAMAN "." — kaldırılır. Ondalık
@@ -118,16 +122,34 @@ function textOf(el: Element | null | undefined): string {
   return (el?.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
+// Ham HTML üzerinde DOĞRUDAN substring araması YAPILMAZ: bazı sayfalar Türkçe
+// karakterleri (ör. "ı") sayısal HTML varlığı olarak encode eder (ör.
+// "Oranı" -> "Oran&#305;") — bu durumda ham metin araması yanlışlıkla "sayfa
+// yapısı değişmiş" sonucuna varır (Akbank'ta 2026-09-15'te tam olarak bu
+// yaşandı). Bunun yerine sayfa DOM'a ayrıştırılıp textContent (entity'leri
+// otomatik decode eden) üzerinden aranır. DOM ayrıştırma başarısız olursa
+// (gerçekten bozuk HTML), yine de ham metne düşülür — güvenlik kaybı yok,
+// yalnızca yanlış-pozitif riski azalıyor.
+export function markerSearchText(html: string): string {
+  try {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const text = doc ? textOf(doc.body ?? doc.documentElement) : null;
+    return text && text.length > 0 ? text : html;
+  } catch {
+    return html;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Ortak tipler
 // ---------------------------------------------------------------------------
 
-interface RateCandidate {
+export interface RateCandidate {
   column: string;
   rate: number;
 }
 
-interface ParsedBand {
+export interface ParsedBand {
   alt_limit: number;
   ust_limit: number;
   yillik_brut_oran: number;
@@ -149,14 +171,14 @@ interface ParsedBand {
   source_table_name?: string;
 }
 
-interface ParseResult {
+export interface ParseResult {
   ok: boolean;
   bands: ParsedBand[];
   rawTierCount: number;
   error?: string;
 }
 
-function fail(error: string): ParseResult {
+export function fail(error: string): ParseResult {
   return { ok: false, bands: [], rawTierCount: 0, error };
 }
 
@@ -363,23 +385,38 @@ function parseFibabankaKirazHosgeldin(html: string): ParseResult {
   return { ok: true, bands, rawTierCount: bands.length };
 }
 
-function parseAkbankSerbestPlus(html: string): ParseResult {
+// Akbank'ın kendi sayfası ".free-plus-table" başlığını/iskeletini sunucu
+// tarafında render eder ama HÜCRELERİ BOŞ bırakır — gerçek değerler sayfanın
+// KENDİ "/SiteAssets/js/free-plus-table.min.js" script'i tarafından, sayfa
+// yüklendikten SONRA bu AYNI ALAN ADINDAKİ (www.akbank.com, üçüncü taraf
+// DEĞİL) resmi AJAX uç noktasından çekilip DOM'a enjekte edilir. Bu yüzden
+// düz bir HTTP GET ile hücreler her zaman boş gelir — marker/DOM seçici
+// düzeltmesi bunu çözemez (2026-09-16'da kullanıcıyla doğrulandı). Çözüm:
+// sayfanın kendi script'inin yaptığı AYNI çağrıyı burada tekrarlamak —
+// arama motoru/üçüncü taraf kaynak DEĞİL, bankanın resmi endpoint'i.
+// Doğrulama/birleştirme/vadesiz-yüzdesi mantığının TAMAMI değişmeden kalır;
+// yalnızca HAM kademe verisinin kaynağı (boş HTML tablosu -> JSON API) değişti.
+const AKBANK_AJAX_URL =
+  "https://www.akbank.com/_layouts/15/Akbank/CalcTools/Ajax.aspx/GetYeniSerbestHesapFaizOranlari";
+
+// AJAX yanıtındaki "amountArray" TR biçiminde DEĞİL — "," burada binlik
+// ayırıcı (İngilizce/API biçimi: "10,000 - 499,999"), parseTRMoney'nin
+// varsaydığı "," ondalık ayırıcısıyla KARIŞTIRILMAMALI. Bu yüzden ayrı bir
+// ayrıştırıcı kullanılır. "periodRateArray" ise "38,50" gibi TR ondalık
+// biçiminde geldiği için mevcut parseTRPercent doğrudan kullanılabilir.
+function parseAkbankAjaxAmount(raw: string): number | null {
+  const cleaned = raw.replace(/,/g, "").trim();
+  if (!cleaned) return null;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+export async function parseAkbankSerbestPlus(html: string): Promise<ParseResult> {
   const doc = new DOMParser().parseFromString(html, "text/html");
   if (!doc) return fail("HTML ayrıştırılamadı");
 
-  const container = doc.querySelector(".free-plus-table");
-  const table = container?.querySelector("table") ?? doc.querySelector(".free-plus-table table");
-  if (!table) return fail('.free-plus-table table bulunamadı — sayfa yapısı değişmiş olabilir');
-
-  const headers = Array.from(table.querySelectorAll("thead th")).map((th) => textOf(th));
-  const rateRow = table.querySelector("tbody tr");
-  const rateCells = rateRow ? Array.from(rateRow.querySelectorAll("td")).map((td) => textOf(td)) : [];
-
-  if (headers.length === 0 || headers.length !== rateCells.length) {
-    return fail(`Başlık/oran sayısı uyuşmuyor (başlık: ${headers.length}, oran: ${rateCells.length})`);
-  }
-
-  // Vadesiz oranı, sabit metinden ayrıca doğrulanır (tablo dışında).
+  // Vadesiz oranı hâlâ ana sayfanın sabit metninden doğrulanır (bu kısım
+  // JS-render'a bağımlı değil, sunucu tarafında zaten mevcut).
   const bodyText = textOf(doc.querySelector("body") ?? doc.documentElement);
   const vadesizMatch = bodyText.match(
     /bakiyesinin\s*%\s*([\d.,]+)['’]?[a-zçğıöşü]*\s+karşılık gelen tutar vadesiz hesapta tutulur/i
@@ -391,39 +428,72 @@ function parseAkbankSerbestPlus(html: string): ParseResult {
   if (vadesizOran === null) return fail(`Vadesiz yüzdesi ayrıştırılamadı: "${vadesizMatch[1]}"`);
   const vadesizYuzde = Math.round(vadesizOran * 100 * 100) / 100; // 0-100 arası
 
+  let ajaxJson: unknown;
+  try {
+    const res = await fetch(AKBANK_AJAX_URL, {
+      method: "POST",
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json, text/javascript, */*; q=0.01",
+        "X-Requested-With": "XMLHttpRequest",
+        "User-Agent":
+          "Mozilla/5.0 (compatible; GunlukMevduatRateCheck/1.0; +https://webappuygulamalar.github.io/gunluk-mevduat-karsilastirma/)",
+      },
+      body: JSON.stringify({ currencyCode: "888" }),
+    });
+    if (!res.ok) return fail(`Akbank faiz oranı servisi HTTP ${res.status} döndürdü`);
+    ajaxJson = await res.json();
+  } catch (err) {
+    return fail(`Akbank faiz oranı servisine erişilemedi: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  const serviceData = (ajaxJson as { d?: { Data?: { ServiceData?: unknown } } })?.d?.Data?.ServiceData as
+    | {
+        amountArray?: unknown;
+        periodData?: { periodArray?: unknown };
+      }
+    | undefined;
+  const amountArray = serviceData?.amountArray;
+  const periodArray = serviceData?.periodData?.periodArray;
+  if (!Array.isArray(amountArray) || amountArray.length === 0 || !Array.isArray(periodArray) || periodArray.length === 0) {
+    return fail("Akbank faiz oranı servisi beklenen yapıda veri döndürmedi (amountArray/periodArray eksik)");
+  }
+  // Servis, ürün başına tek bir dönem (gün aralığı) döndürür (periodArrayCount
+  // her zaman 1 olarak gözlemlendi) — birden fazla dönem dönerse bu YENİ bir
+  // ürün boyutu demektir (QNB'deki vade-bağımlı yapıya benzer); güvenle
+  // otomatikleştirilemez, açıkça reddedilir.
+  if (periodArray.length > 1) {
+    return fail(`Akbank faiz oranı servisi birden fazla vade dönemi döndürdü (${periodArray.length}) — mevcut model tek dönem varsayıyor, manuel inceleme gerekli`);
+  }
+  const periodRateArray = (periodArray[0] as { periodRateArray?: unknown })?.periodRateArray;
+  if (!Array.isArray(periodRateArray) || periodRateArray.length !== amountArray.length) {
+    return fail(
+      `Akbank faiz oranı servisinde tutar/oran sayısı uyuşmuyor (tutar: ${amountArray.length}, oran: ${Array.isArray(periodRateArray) ? periodRateArray.length : "yok"})`
+    );
+  }
+
   type RawTier = { alt: number; ust: number; rate: number };
   const rawTiers: RawTier[] = [];
-  for (let i = 0; i < headers.length; i++) {
-    const label = headers[i];
-    const rate = parseTRPercent(rateCells[i]);
-    if (rate === null) return fail(`Oran ayrıştırılamadı: "${rateCells[i]}"`);
+  for (let i = 0; i < amountArray.length; i++) {
+    const label = String(amountArray[i]);
+    const rateRaw = String(periodRateArray[i]);
+    const rate = parseTRPercent(rateRaw);
+    if (rate === null) return fail(`Oran ayrıştırılamadı: "${rateRaw}"`);
 
-    const uzeriMatch = label.match(/^([\d.,]+)\s*TL\s*üzeri/i);
-    const rangeMatch = label.match(/^([\d.,]+)\s*TL\s*-\s*([\d.,]+)\s*TL/i);
-
-    if (uzeriMatch) {
-      // "X TL üzeri" = X'in KENDİSİ DEĞİL, yalnızca üzeri (kesin olarak X'ten
-      // büyük). X'in kendisi bir önceki ("...-X TL") bandına dahildir. Bu
-      // yüzden alt sınır X değil, X+0.01 olmalı — aksi halde X'in kendisi
-      // yanlışlıkla bu (daha düşük) orana düşer.
-      const threshold = parseTRMoney(uzeriMatch[1]);
-      if (threshold === null) return fail(`Tutar aralığı ayrıştırılamadı: "${label}"`);
-      rawTiers.push({ alt: threshold + 0.01, ust: 9999999999, rate });
-    } else if (rangeMatch) {
-      const alt = parseTRMoney(rangeMatch[1]);
-      const ust = parseTRMoney(rangeMatch[2]);
-      if (alt === null || ust === null) return fail(`Tutar aralığı ayrıştırılamadı: "${label}"`);
-      rawTiers.push({ alt, ust, rate });
-    } else {
-      return fail(`Tanınmayan tutar aralığı biçimi: "${label}"`);
-    }
+    const rangeMatch = label.match(/^([\d,]+)\s*-\s*([\d,]+)$/);
+    if (!rangeMatch) return fail(`Tutar aralığı ayrıştırılamadı: "${label}"`);
+    const alt = parseAkbankAjaxAmount(rangeMatch[1]);
+    const ust = parseAkbankAjaxAmount(rangeMatch[2]);
+    if (alt === null || ust === null) return fail(`Tutar aralığı ayrıştırılamadı: "${label}"`);
+    rawTiers.push({ alt, ust, rate });
   }
 
   rawTiers.sort((a, b) => a.alt - b.alt);
   const rawTierCount = rawTiers.length;
 
   // Ardışık, aynı orana sahip bantları tek bantta birleştir (Akbank'ın
-  // veri modelde tutulan bant sayısı, sayfadaki ham kademe sayısından
+  // veri modelde tutulan bant sayısı, servisteki ham kademe sayısından
   // azdır çünkü vadesiz tutar artık banda özgü sabit bir TL değil, bakiyenin
   // yüzdesi — bant ayrımı yalnızca oran farklıysa anlamlıdır).
   const merged: RawTier[] = [];
@@ -436,6 +506,19 @@ function parseAkbankSerbestPlus(html: string): ParseResult {
     }
   }
 
+  // Servis, ardışık kademe sınırlarını TAM ÇAKIŞAN uçlarla verir (ör. "...-
+  // 25.000.000" ve hemen ardından "25.000.000-..." — aynı 25.000.000 iki
+  // kademede birden görünür). Birleştirmeden SONRA kalan bantlar arasında
+  // hâlâ böyle bir tam-çakışma varsa (sonraki.alt === önceki.üst), sonraki
+  // bandın alt sınırı +0,01 TL kaydırılır — TOM Bank/Alternatifbank'taki
+  // kuruş-boşluğu normalizasyonuyla aynı ilke, burada TERS yönde (boşluk
+  // değil çakışma gideriliyor).
+  for (let i = 0; i < merged.length - 1; i++) {
+    if (merged[i + 1].alt === merged[i].ust) {
+      merged[i + 1].alt = Math.round((merged[i + 1].alt + 0.01) * 100) / 100;
+    }
+  }
+
   const bands: ParsedBand[] = merged.map((t) => ({
     alt_limit: t.alt,
     ust_limit: t.ust,
@@ -443,6 +526,8 @@ function parseAkbankSerbestPlus(html: string): ParseResult {
     vadesizde_kalacak: 0,
     vadesiz_hesaplama_tipi: "yuzde",
     vadesiz_oran: vadesizYuzde,
+    raw: { "amountArray (kaynak servis)": JSON.stringify(amountArray), "periodRateArray (kaynak servis)": JSON.stringify(periodRateArray) },
+    source_table_name: "GetYeniSerbestHesapFaizOranlari (resmi Akbank servisi)",
   }));
 
   return { ok: true, bands, rawTierCount };
@@ -470,38 +555,115 @@ interface OdeabankRawRow {
 const ODEA_TABLE_NAME = "Oksijen Hesap* - TL";
 const ODEA_HOSGELDIN_COL = "Hoş Geldin Faiz Oranı";
 const ODEA_YENI_MUSTERI_COL = "Yeni Müşteriye Özel Hoş Geldin Faiz Oranı";
+const ODEA_EXPECTED_ROW_COUNT = 16;
+// Sütun adları, sayfanın kendi başlık metinleriyle (ör. "TL-Tutar<br>Aralığı*")
+// birebir örtüşecek şekilde, footnote yıldızları/satır sonları temizlendikten
+// SONRAKİ hallerine göre yazıldı — bkz. normalizeOdeaHeader().
+const ODEA_REQUIRED_HEADERS = [
+  "TL-Tutar Aralığı",
+  "Vadesiz Alt Limit",
+  ODEA_HOSGELDIN_COL,
+  ODEA_YENI_MUSTERI_COL,
+  "1. Dönem Avantajlı Devam Faiz Oranı",
+  "2. Dönem Devam Faiz Oranı",
+];
+
+// Başlık karşılaştırması hücre NUMARASINA değil normalize edilmiş ADINA göre
+// yapılır: HTML entity'leri (DOMParser zaten decode eder), NBSP (\s zaten
+// kapsar), görünmez Unicode karakterler (zero-width space/joiner, BOM),
+// satır sonu/çoklu boşluk ve footnote yıldızları (*, **) temizlenir. Türkçe
+// karakterler DOKUNULMADAN kalır.
+function normalizeOdeaHeader(raw: string): string {
+  return raw
+    .replace(/[​-‍﻿]/g, "")
+    .replace(/\*+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 function parseOdeabankRawRows(html: string): { ok: true; rows: OdeabankRawRow[] } | { ok: false; error: string } {
   const doc = new DOMParser().parseFromString(html, "text/html");
   if (!doc) return { ok: false, error: "HTML ayrıştırılamadı" };
 
-  const boxes = Array.from(doc.querySelectorAll(".content-box"));
-  const box = boxes.find((b) => {
-    const heading = textOf(b.querySelector("h2"));
-    return heading.includes("Oksijen Hesap") && heading.includes("TL") && !heading.includes("USD") && !heading.includes("EUR");
-  });
-  if (!box) return { ok: false, error: '"Oksijen Hesap* - TL" başlıklı bölüm bulunamadı — sayfa yapısı değişmiş olabilir' };
+  // .content-box CSS sınıfına veya sabit hücre numaralarına GÜVENİLMEZ:
+  // sayfadaki TÜM tablolar taranır, her birinin başlık satırı (thead th,
+  // yoksa ilk satırın th'leri) normalize edilip ADIYLA karşılaştırılır.
+  // USD/EUR tabloları farklı ilk sütun adı kullandığı için ("USD-Tutar
+  // Aralığı" / "EUR-Tutar Aralığı", "TL-Tutar Aralığı" DEĞİL) bu isim
+  // eşleşmesiyle zaten elenir; ayrıca gövde metninde "USD"/"EUR" birim
+  // ibaresi geçen tablolar ikinci bir güvenlik katmanı olarak da reddedilir.
+  const allTables = Array.from(doc.querySelectorAll("table"));
+  interface Candidate { table: Element; headerIndex: Map<string, number>; rowCount: number; }
+  const headerMatches: Candidate[] = [];
+  const rejectedForCurrency: Element[] = [];
+  const rejectedForRowCount: { table: Element; rowCount: number }[] = [];
 
-  const table = box.querySelector("table");
-  if (!table) return { ok: false, error: '"Oksijen Hesap* - TL" bölümünde tablo bulunamadı' };
+  for (const table of allTables) {
+    let headerCells = Array.from(table.querySelectorAll("thead th"));
+    if (headerCells.length === 0) headerCells = Array.from(table.querySelectorAll("tr:first-child th"));
+    if (headerCells.length === 0) continue;
+
+    const headerIndex = new Map<string, number>();
+    headerCells.forEach((th, i) => headerIndex.set(normalizeOdeaHeader(textOf(th)), i));
+
+    const hasAllRequired = ODEA_REQUIRED_HEADERS.every((h) => headerIndex.has(h));
+    if (!hasAllRequired) continue;
+
+    if (/\bUSD\b|\bEUR\b/.test(textOf(table))) {
+      rejectedForCurrency.push(table);
+      continue;
+    }
+
+    const rowCount = table.querySelectorAll("tbody tr").length;
+    if (rowCount !== ODEA_EXPECTED_ROW_COUNT) {
+      rejectedForRowCount.push({ table, rowCount });
+      continue;
+    }
+
+    headerMatches.push({ table, headerIndex, rowCount });
+  }
+
+  if (headerMatches.length === 0) {
+    if (rejectedForRowCount.length > 0) {
+      return {
+        ok: false,
+        error: `Gerekli 6 başlığa sahip TL tablosu bulundu ama satır sayısı ${ODEA_EXPECTED_ROW_COUNT} değil (bulunan: ${rejectedForRowCount.map((r) => r.rowCount).join(", ")}) — sayfa yapısı değişmiş olabilir`,
+      };
+    }
+    return {
+      ok: false,
+      error: `"${ODEA_TABLE_NAME}" tablosu bulunamadı — gerekli 6 başlığın tamamına (${ODEA_REQUIRED_HEADERS.join(", ")}) sahip bir TL tablosu yok. Sayfa yapısı değişmiş olabilir.`,
+    };
+  }
+  if (headerMatches.length > 1) {
+    return {
+      ok: false,
+      error: `Birden fazla tablo TL tablosu kriterlerini (gerekli başlıklar + ${ODEA_EXPECTED_ROW_COUNT} satır) sağlıyor (${headerMatches.length} aday) — güvenle seçilemiyor, tahmin yürütülmedi.`,
+    };
+  }
+
+  const { table, headerIndex } = headerMatches[0];
+  const idxTutar = headerIndex.get("TL-Tutar Aralığı")!;
+  const idxVadesiz = headerIndex.get("Vadesiz Alt Limit")!;
+  const idxHosGeldin = headerIndex.get(ODEA_HOSGELDIN_COL)!;
+  const idxYeniMusteri = headerIndex.get(ODEA_YENI_MUSTERI_COL)!;
+  const maxIdx = Math.max(idxTutar, idxVadesiz, idxHosGeldin, idxYeniMusteri);
 
   const trs = Array.from(table.querySelectorAll("tbody tr"));
-  if (trs.length === 0) return { ok: false, error: "tbody satırı bulunamadı" };
-
   const rows: OdeabankRawRow[] = [];
   for (const row of trs) {
     const tds = Array.from(row.querySelectorAll("td"));
-    if (tds.length < 4) return { ok: false, error: `Beklenmeyen hücre sayısı: ${tds.length}` };
+    if (tds.length <= maxIdx) return { ok: false, error: `Beklenmeyen hücre sayısı: ${tds.length}` };
 
-    const rangeText = textOf(tds[0]);
+    const rangeText = textOf(tds[idxTutar]);
     const rangeMatch = rangeText.match(/^([\d.,]+)\s*-\s*([\d.,]+)$/);
     if (!rangeMatch) return { ok: false, error: `Tutar aralığı ayrıştırılamadı: "${rangeText}"` };
     const alt = parseTRMoney(rangeMatch[1]);
     const ust = parseTRMoney(rangeMatch[2]);
 
-    const vadesizRaw = textOf(tds[1]);
-    const hosGeldinRaw = textOf(tds[2]);
-    const yeniMusteriRaw = textOf(tds[3]);
+    const vadesizRaw = textOf(tds[idxVadesiz]);
+    const hosGeldinRaw = textOf(tds[idxHosGeldin]);
+    const yeniMusteriRaw = textOf(tds[idxYeniMusteri]);
     const vadesiz = parseTRMoney(vadesizRaw);
     const hosGeldinOran = parseTRPercent(hosGeldinRaw);
     const yeniMusteriOran = parseTRPercent(yeniMusteriRaw);
@@ -511,6 +673,33 @@ function parseOdeabankRawRows(html: string): { ok: true; rows: OdeabankRawRow[] 
     }
 
     rows.push({ alt, ust, vadesiz, vadesizRaw, hosGeldinOran, hosGeldinRaw, yeniMusteriOran, yeniMusteriRaw });
+  }
+
+  if (rows.length !== ODEA_EXPECTED_ROW_COUNT) {
+    return { ok: false, error: `Beklenen bant sayısı (${ODEA_EXPECTED_ROW_COUNT}) yerine ${rows.length} satır ayrıştırıldı` };
+  }
+
+  // Yapısal güvenlik: alt/üst sınırlar sayısal olarak KESİN ARTAN sırada
+  // olmalı, ardışık bantlar arasında boşluk/çakışma OLMAMALI (tam 0,01 TL
+  // — Odeabank'ın kendi kuruş-hassasiyetli yayın biçimiyle tutarlı) ve son
+  // bant ile önceki 15 bant yanlışlıkla birleşmemeli (her satır kendi
+  // aralığını korur, burada birleştirme YOK).
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i].ust <= rows[i].alt) {
+      return { ok: false, error: `Bant ${i + 1}: üst sınır (${rows[i].ust}) alt sınırdan (${rows[i].alt}) büyük değil` };
+    }
+    if (i > 0 && rows[i].alt <= rows[i - 1].alt) {
+      return { ok: false, error: `Bantlar artan sırada değil: bant ${i} alt=${rows[i - 1].alt}, bant ${i + 1} alt=${rows[i].alt}` };
+    }
+    if (i > 0) {
+      const gap = Math.round((rows[i].alt - rows[i - 1].ust) * 100) / 100;
+      if (Math.abs(gap - 0.01) > 1e-9) {
+        return {
+          ok: false,
+          error: `Bant ${i}-${i + 1} arasında beklenmeyen geçiş: ${rows[i - 1].ust} TL -> ${rows[i].alt} TL (fark ${gap} TL, beklenen 0,01 TL) — boşluk/çakışma olabilir`,
+        };
+      }
+    }
   }
 
   return { ok: true, rows };
@@ -526,7 +715,7 @@ function parseOdeabankRawRows(html: string): { ok: true; rows: OdeabankRawRow[] 
 // koşul, o satırda sayısal olarak hangi sütun (Hoş Geldin mi Yeni Müşteriye
 // Özel mi) daha yüksek çıkarsa çıksın SABİTTİR — ürünün eligibility'si,
 // "en yüksek aday oranı seç" karşılaştırma politikasından bağımsızdır.
-function parseOdeabankYeniMusteriOksijen(html: string): ParseResult {
+export function parseOdeabankYeniMusteriOksijen(html: string): ParseResult {
   const raw = parseOdeabankRawRows(html);
   if (!raw.ok) return fail(raw.error);
 
@@ -771,7 +960,423 @@ function parseIngHosGeldin(html: string): ParseResult {
   return { ok: true, bands, rawTierCount: bands.length };
 }
 
-const PARSERS: Record<string, (html: string) => ParseResult> = {
+// ---------------------------------------------------------------------------
+// Yapı Kredi Sınırsız Hesap — "RATE-ONLY" otomasyon.
+//
+// alt_limit / ust_limit / vadesizde_kalacak bu parser tarafından ASLA
+// üretilmez/değiştirilmez: kuruş-hassasiyetli 9 bant sınırı (20260915120000
+// migration'ında normalize edildi) SADECE `stored`'dan aynen kopyalanır.
+// Sayfadan yalnızca hangi tutar bandının hangi ORANA sahip olduğu okunur —
+// eşleştirme kayıtlı alt_limit'e göre yapılır (dizi sırasına güvenilmez).
+// Sayfanın kendi "Hesaptaki Tutar" / "Vadesiz Alt Limit" sütunları AYRICA
+// yapısal doğrulama için kullanılır: sayfadaki vadesiz alt limit kayıtlı
+// değerden farklıysa (yapısal fark), o bant için hiçbir oran önerilmez —
+// tüm parse başarısız sayılır (hepsi ya da hiçbiri).
+// ---------------------------------------------------------------------------
+
+const YK_TABLE_NAME = "Sınırsız Hesap Faiz İşleyişi";
+const YK_KAMPANYALI_COL = "Kampanyalı Faiz Oranı";
+const YK_KAMPANYA_SONRASI_COL = "Kampanya Sonrası Faiz Oranı";
+const YK_BAZ_COL = "Baz Faiz Oranı";
+const YK_MOBIL_HOSGELDIN_COL = "Mobilden Yeni Müşteri Hoş Geldin Faizi";
+
+export async function parseYapiKrediSinirsizHesap(html: string, stored: BankRateRow[]): Promise<ParseResult> {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  if (!doc) return fail("HTML ayrıştırılamadı");
+
+  const tables = Array.from(doc.querySelectorAll("table"));
+  const table = tables.find((t) => textOf(t.querySelector("thead")).includes(YK_KAMPANYALI_COL));
+  if (!table) return fail(`"${YK_KAMPANYALI_COL}" başlıklı Sınırsız Hesap tablosu bulunamadı — sayfa yapısı değişmiş olabilir`);
+
+  const headers = Array.from(table.querySelectorAll("thead th")).map((th) => textOf(th));
+  const idxTutar = headers.findIndex((h) => h.includes("Hesaptaki Tutar"));
+  const idxVadesiz = headers.findIndex((h) => h.includes("Vadesiz Alt Limit"));
+  const idxKampanyali = headers.findIndex((h) => h.includes(YK_KAMPANYALI_COL));
+  const idxSonrasi = headers.findIndex((h) => h.includes(YK_KAMPANYA_SONRASI_COL));
+  const idxBaz = headers.findIndex((h) => h.includes(YK_BAZ_COL));
+  if ([idxTutar, idxVadesiz, idxKampanyali, idxSonrasi, idxBaz].some((i) => i < 0)) {
+    return fail(`Beklenen sütun başlıkları bulunamadı (Hesaptaki Tutar / Vadesiz Alt Limit / ${YK_KAMPANYALI_COL} / ${YK_KAMPANYA_SONRASI_COL} / ${YK_BAZ_COL}): "${headers.join(" | ")}"`);
+  }
+
+  const rows = Array.from(table.querySelectorAll("tbody tr"));
+  if (rows.length === 0) return fail("Sınırsız Hesap tablosunda tbody satırı bulunamadı");
+
+  interface YkPageRow {
+    alt: number;
+    vadesiz: number;
+    vadesizRaw: string;
+    kampanyali: number;
+    kampanyaliRaw: string;
+    sonrasi: number;
+    sonrasiRaw: string;
+    baz: number;
+    bazRaw: string;
+    rangeText: string;
+  }
+  const pageRows: YkPageRow[] = [];
+  const maxIdx = Math.max(idxTutar, idxVadesiz, idxKampanyali, idxSonrasi, idxBaz);
+  for (const row of rows) {
+    const cells = Array.from(row.querySelectorAll("td"));
+    if (cells.length <= maxIdx) return fail(`Beklenmeyen hücre sayısı (${cells.length}) satırda: "${textOf(row)}"`);
+
+    const rangeText = textOf(cells[idxTutar]);
+    const rangeMatch = rangeText.match(/^([\d.,]+)\s*-\s*([\d.,]+)\s*TL/i);
+    if (!rangeMatch) return fail(`Tutar aralığı ayrıştırılamadı: "${rangeText}"`);
+    const alt = parseTRMoney(rangeMatch[1]);
+    if (alt === null) return fail(`Tutar aralığı ayrıştırılamadı: "${rangeText}"`);
+
+    const vadesizRaw = textOf(cells[idxVadesiz]);
+    const kampanyaliRaw = textOf(cells[idxKampanyali]);
+    const sonrasiRaw = textOf(cells[idxSonrasi]);
+    const bazRaw = textOf(cells[idxBaz]);
+    const vadesiz = parseTRMoney(vadesizRaw);
+    const kampanyali = parseTRPercent(kampanyaliRaw);
+    const sonrasi = parseTRPercent(sonrasiRaw);
+    const baz = parseTRPercent(bazRaw);
+    if (vadesiz === null || kampanyali === null || sonrasi === null || baz === null) {
+      return fail(`Sayısal alan ayrıştırılamadı (satır: "${rangeText}")`);
+    }
+    pageRows.push({ alt, vadesiz, vadesizRaw, kampanyali, kampanyaliRaw, sonrasi, sonrasiRaw, baz, bazRaw, rangeText });
+  }
+
+  // İkinci resmi kaynak (mobilden yeni müşteri hoş geldin kampanyası) —
+  // OPSİYONELDİR: çekilemezse/okunamazsa parser BAŞARISIZ OLMAZ, yalnızca bu
+  // ek aday adaylar listesine eklenmez (ana tablo zaten zorunlu/yeterli).
+  let mobilHosgeldin: number | null = null;
+  try {
+    const campRes = await fetch(YK_CAMPAIGN_URL, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (compatible; GunlukMevduatRateCheck/1.0; +https://webappuygulamalar.github.io/gunluk-mevduat-karsilastirma/)",
+      },
+    });
+    if (campRes.ok) {
+      const campHtml = await campRes.text();
+      const campDoc = new DOMParser().parseFromString(campHtml, "text/html");
+      const campText = campDoc ? textOf(campDoc.body ?? campDoc.documentElement) : "";
+      const m = campText.match(/%\s*([\d.,]+)\s*(?:oranında\s+)?hoş geldin faizi/i);
+      if (m) {
+        const r = parseTRPercent(m[1] + "%");
+        if (r !== null) mobilHosgeldin = r;
+      }
+    }
+  } catch {
+    // opsiyonel ikincil kaynak — erişilemezse sessizce yok sayılır
+  }
+
+  const pageByAlt = new Map<string, YkPageRow>();
+  for (const r of pageRows) pageByAlt.set(r.alt.toFixed(2), r);
+
+  const bands: ParsedBand[] = [];
+  for (const s of stored) {
+    const key = Number(s.alt_limit).toFixed(2);
+    const p = pageByAlt.get(key);
+    if (!p) {
+      return fail(`Yapısal fark — manuel inceleme gerekli: kayıtlı ${s.alt_limit} TL alt limitine sayfada karşılık gelen bir satır bulunamadı.`);
+    }
+    if (Math.abs(p.vadesiz - Number(s.vadesizde_kalacak)) > EPS_MONEY) {
+      return fail(
+        `Yapısal fark — manuel inceleme gerekli: "${p.rangeText}" bandında sayfadaki vadesiz alt limit (${p.vadesiz} TL) kayıtlı değerden (${s.vadesizde_kalacak} TL) farklı.`
+      );
+    }
+
+    const candidates: RateCandidate[] = [
+      { column: YK_BAZ_COL, rate: p.baz },
+      { column: YK_KAMPANYA_SONRASI_COL, rate: p.sonrasi },
+      { column: YK_KAMPANYALI_COL, rate: p.kampanyali },
+    ];
+    if (mobilHosgeldin !== null) candidates.push({ column: YK_MOBIL_HOSGELDIN_COL, rate: mobilHosgeldin });
+
+    let winner = candidates[0];
+    for (const c of candidates) if (c.rate > winner.rate) winner = c;
+
+    const condition =
+      winner.column === YK_KAMPANYALI_COL || winner.column === YK_MOBIL_HOSGELDIN_COL
+        ? "30 gün geçerli kampanyalı/yeni müşteri hoş geldin faiz oranı; kampanya süresi sonunda kampanya sonrası veya baz faiz oranına dönülür."
+        : winner.column === YK_KAMPANYA_SONRASI_COL
+          ? "Kampanya sonrası devam faiz oranı."
+          : "Baz (kampanyasız) faiz oranı.";
+
+    bands.push({
+      alt_limit: Number(s.alt_limit),
+      ust_limit: Number(s.ust_limit),
+      yillik_brut_oran: winner.rate,
+      vadesizde_kalacak: Number(s.vadesizde_kalacak),
+      vadesiz_hesaplama_tipi: s.vadesiz_hesaplama_tipi,
+      vadesiz_oran: s.vadesiz_oran,
+      raw: {
+        "Vadesiz Alt Limit (kaynak sütunu)": p.vadesizRaw,
+        [YK_KAMPANYALI_COL]: p.kampanyaliRaw,
+        [YK_KAMPANYA_SONRASI_COL]: p.sonrasiRaw,
+        [YK_BAZ_COL]: p.bazRaw,
+        ...(mobilHosgeldin !== null ? { [YK_MOBIL_HOSGELDIN_COL]: `%${mobilHosgeldin * 100}` } : {}),
+      },
+      selected_rate_column: winner.column,
+      selected_rate_condition: condition,
+      observed_rate_candidates: candidates,
+      source_table_name: YK_TABLE_NAME,
+    });
+  }
+
+  return { ok: true, bands, rawTierCount: pageRows.length };
+}
+
+// ---------------------------------------------------------------------------
+// QNB Kazandıran Günlük Hesap — "RATE-ONLY" otomasyon.
+//
+// KULLANICI POLİTİKASI (2026-09-16, kesinleştirildi): "Kazananlar Kulübü /
+// QNB Plus" ek %1 oranı ÖZEL MÜŞTERİ SEGMENTİNE has bir faydadır ve rakip
+// oran karşılaştırmasına KESİNLİKLE DAHİL EDİLMEZ. Genel politika: "Aynı
+// ürün için genel kullanıma açık standart, yeni müşteri veya dijital kanal
+// oranları arasından en yüksek uygulanabilir oran seçilir. Özel bankacılık,
+// sadakat kulübü, kişiye özel fiyatlama veya yalnızca seçilmiş müşteri
+// segmentlerine verilen ek oranlar karşılaştırmaya dahil edilmez." Bu yüzden
+// asıl kaynak, "Kazanan Günlük Hesap - Günlük Faiz Oranları" başlık
+// tablosu (Kazananlar Kulübü sütunu içerir) DEĞİL, "Tanışma Ve Tanışma
+// Sonrası Devam Faizi" MATRİSİDİR — bu matriste hiç Kazananlar Kulübü sütunu
+// YOKTUR, yalnızca koşulsuz/genel "1-45 Gün" oranı vardır. Başlık tablosu
+// yalnızca KANIT amaçlı okunur (standart + kulüp oranı ikisi de raw'a
+// yazılır, kulüp oranı AÇIKÇA "hariç tutuldu" notuyla) — asla seçilen orana
+// dönüşmez.
+//
+// QNB'nin gerçek ürünü ayrıca VADEYE (gün aralığına) göre değişen, tutar
+// bandından bağımsız bir boyuta sahip (41,75% [1-45 gün] .. ~29% [721+ gün])
+// — mevcut bank_rates şeması ve app.js hesap motoru TEK sabit yıllık oran
+// varsayıyor, vade boyutu YOK. Bu yüzden yalnızca 1-45 gün sütunu kullanılır
+// (diğer bankalardaki "kampanya/giriş oranı" deseniyle tutarlı).
+//
+// TUTARA GÖRE EŞLEŞTİRME (dizi sırasına GÜVENİLMEZ): matrisin "1-45 Gün"
+// sütunu tutardan TAMAMEN bağımsız DEĞİLDİR — 10.000.000 TL ALTINDAKİ 14
+// bandın hepsi aynı %41,75'i gösterirken, 10.000.000 TL VE ÜZERİNDEKİ 3 bant
+// (10M/20M/30M) belirgin şekilde DÜŞÜK oranlar gösterir (elle doğrulandı:
+// %27,75 / %27,75 / %25,50). Özet (başlık) tablosundaki "0-10.000.000" tek
+// satırı bu yüzden 10M ÜZERİNDEKİ bantlara ASLA yayılmaz.
+//
+// Matrisin satır ETİKETLERİNDE (ör. "5,000,00-7,499,999.99" — eksik bir sıfır)
+// QNB'nin kendi sayfasında bilinen küçük yazım hataları var; bu yüzden 17
+// bandın HER BİRİNİN etiketini tek tek ayrıştırmaya güvenilmez. Bunun yerine:
+//   a) 10.000.000 TL ALTI bantlar İÇERİK tutarlılığıyla doğrulanır — bu
+//      grubun TÜM güvenle ayrıştırılabilen satırları AYNI 1-45 gün oranını
+//      göstermeli (tek bir yazım hatalı satır etiketi sonucu etkilemez, çünkü
+//      karar tek satır kimliğine değil TÜM grubun iç tutarlılığına dayanır).
+//   b) 10.000.000 TL VE ÜZERİ 3 bant, START değerleri sayfada yazım hatasız
+//      olduğu doğrulanmış NUMERİK eşleştirmeyle (10.000.000/20.000.000/
+//      30.000.000) AYRI AYRI okunur.
+//   c) Matris satır SAYISI (17) yapısal bütünlük için ayrıca doğrulanır —
+//      bu, hücre METNİNDEKİ yazım hatalarından ETKİLENMEYEN, güvenilir bir
+//      kontroldür (bir bandın eklenip/çıkarılıp çıkarılmadığını yakalar).
+// Düşük grup İÇİNDE tutarsızlık bulunursa, YA DA 3 üst bandın herhangi biri
+// eşleştirilemezse, YA DA satır sayısı 17 değilse: TÜM parse reddedilir
+// (hepsi ya da hiçbiri) — hiçbir QNB oranı önerilmez.
+//
+// alt_limit / ust_limit / vadesizde_kalacak ASLA üretilmez/değiştirilmez —
+// kuruş-hassasiyetli 17 bant sınırı (20260916090000 migration'ında normalize
+// edildi) SADECE `stored`'dan aynen kopyalanır. Ek yapısal doğrulama,
+// sayfanın "Alt Limit Tutarı (TL)" tablosuyla (0–999.999 TL arası 8 bandı
+// kapsar) yapılır: bu 8 bandın alt_limit VE vadesiz alt limiti kayıtlı
+// değerle uyuşmuyorsa parse tamamen başarısız sayılır.
+// ---------------------------------------------------------------------------
+
+// QNB'nin sayfası (Akbank'ın AJAX servisi gibi) TR biçimi DEĞİL, İNGİLİZCE/
+// uluslararası sayı biçimi kullanıyor: tutarlarda "," binlik ayırıcı
+// ("0-49,999", "7,500"), oranlarda "." ondalık ayırıcı ("41.75%") — sitenin
+// geri kalanının Türkçe metnine rağmen. parseTRMoney/parseTRPercent burada
+// KULLANILAMAZ (ör. "41.75%" TR ayrıştırıcıyla yanlışlıkla 4175 olur, çünkü
+// "." orada binlik ayırıcı sayılıp silinir). Elle doğrulandı (2026-09-16).
+function parseQNBMoney(raw: string): number | null {
+  const cleaned = raw.replace(/,/g, "").replace(/\s/g, "").trim();
+  if (!cleaned) return null;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+function parseQNBPercent(raw: string): number | null {
+  const cleaned = raw.replace(/%/g, "").replace(/\s/g, "").trim();
+  if (!cleaned) return null;
+  const n = Number(cleaned);
+  if (!Number.isFinite(n)) return null;
+  return n / 100;
+}
+
+const QNB_HEADLINE_TABLE_NAME = "Kazandıran Günlük Hesap - Günlük Faiz Oranları";
+const QNB_MATRIX_TABLE_NAME = "Tanışma Ve Tanışma Sonrası Devam Faizi";
+const QNB_ALTLIMIT_TABLE_HEADER = "Alt Limit Tutarı (TL)";
+const QNB_STANDARD_COL = "Faiz Oranı (1-45 Gün, genel/koşulsuz)";
+const QNB_EXCLUDED_CLUB_NOTE = "Kazananlar Kulübü / QNB Plus (özel müşteri segmenti oranı — kullanıcı politikası gereği rakip karşılaştırmasından hariç tutuldu, seçilemez)";
+const QNB_HIGH_TIER_THRESHOLD = 10000000; // TL — bu ve üzeri bantlarda 1-45 gün oranı DÜŞÜK grupla aynı DEĞİLDİR
+const QNB_EXPECTED_MATRIX_ROW_COUNT = 17;
+
+export function parseQNBKazandiranGunluk(html: string, stored: BankRateRow[]): ParseResult {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  if (!doc) return fail("HTML ayrıştırılamadı");
+
+  const tables = Array.from(doc.querySelectorAll("table"));
+
+  // 0) Başlık (özet) tablosu — YALNIZCA KANIT AMAÇLI. Standart ve Kazananlar
+  //    Kulübü/QNB Plus oranları ayrı ayrı okunup `raw`'a yazılır ama HİÇBİR
+  //    ZAMAN seçilen orana dönüşmez (kullanıcı politikası). Bu tablo
+  //    bulunamazsa parse BAŞARISIZ OLMAZ — asıl kaynak aşağıdaki matristir.
+  const headlineTable = tables.find((t) => {
+    const h = textOf(t.querySelector("thead"));
+    return h.includes("Faiz Oranı") && h.includes("Kazananlar Kulübü");
+  });
+  let headlineStandartRaw = "";
+  let headlineKulupRaw = "";
+  if (headlineTable) {
+    const hRows = Array.from(headlineTable.querySelectorAll("tbody tr"));
+    for (const row of hRows) {
+      const cells = Array.from(row.querySelectorAll("td"));
+      if (cells.length < 4) continue;
+      const label = textOf(cells[0]);
+      const gun = textOf(cells[1]);
+      if (!/tanışma faizi/i.test(label) || !/^1\s*-\s*45/.test(gun)) continue;
+      headlineStandartRaw = textOf(cells[3]);
+      if (cells[4]) headlineKulupRaw = textOf(cells[4]);
+      break;
+    }
+  }
+
+  // 1) Asıl kaynak: "Tanışma Ve Tanışma Sonrası Devam Faizi" matrisi —
+  //    kendi thead'inde "Tutar", "1-45" ve "46-91" geçen tablo (isimle
+  //    bulunur). Bu tabloda Kazananlar Kulübü sütunu YOKTUR.
+  const matrixTable = tables.find((t) => {
+    const h = textOf(t.querySelector("thead"));
+    return h.includes("Tutar") && h.includes("1-45") && h.includes("46-91");
+  });
+  if (!matrixTable) {
+    return fail(`"${QNB_MATRIX_TABLE_NAME}" tablosu bulunamadı — sayfa yapısı değişmiş olabilir`);
+  }
+  const matrixRowEls = Array.from(matrixTable.querySelectorAll("tbody tr"));
+  if (matrixRowEls.length !== QNB_EXPECTED_MATRIX_ROW_COUNT) {
+    return fail(
+      `"${QNB_MATRIX_TABLE_NAME}" tablosunda beklenen bant sayısı (${QNB_EXPECTED_MATRIX_ROW_COUNT}) yerine ${matrixRowEls.length} satır bulundu — sayfa yapısı değişmiş olabilir`
+    );
+  }
+
+  interface MatrixRow { altRaw: string; alt: number | null; rateRaw: string; rate: number | null; }
+  const matrixRows: MatrixRow[] = matrixRowEls.map((row) => {
+    const cells = Array.from(row.querySelectorAll("td"));
+    const altRaw = cells[0] ? textOf(cells[0]) : "";
+    const rateRaw = cells[1] ? textOf(cells[1]) : "";
+    // Yalnızca aralığın BAŞLANGIÇ değeri kullanılır — sayfada bilinen bazı
+    // satırların BİTİŞ değerinde yazım hatası var (ör. "499,99.99"), ama
+    // eşleştirme için başlangıç değeri yeterli ve bu belirli hatalardan
+    // etkilenmiyor.
+    const altMatch = altRaw.match(/^([\d,]+)/);
+    const alt = altMatch ? parseQNBMoney(altMatch[1]) : null;
+    const rate = parseQNBPercent(rateRaw);
+    return { altRaw, alt, rateRaw, rate };
+  });
+  if (matrixRows.some((r) => r.rate === null)) {
+    const bad = matrixRows.find((r) => r.rate === null)!;
+    return fail(`"${QNB_MATRIX_TABLE_NAME}" tablosunda 1-45 Gün oranı ayrıştırılamadı (satır: "${bad.altRaw}" -> "${bad.rateRaw}")`);
+  }
+
+  // 10.000.000 TL ALTI bantlar: TEK TEK kimliklerine değil, İÇERİK
+  // TUTARLILIĞINA göre doğrulanır — bu grubun güvenle ayrıştırılabilen TÜM
+  // satırları AYNI 1-45 gün oranını göstermeli. Böylece sayfadaki bilinen
+  // etiket yazım hataları (ör. "5,000,00-7,499,999.99") sonucu ETKİLEMEZ:
+  // karar tek satırın kimliğine değil grubun bütününe dayanıyor.
+  const lowRows = matrixRows.filter((r) => r.alt !== null && r.alt < QNB_HIGH_TIER_THRESHOLD);
+  if (lowRows.length === 0) {
+    return fail(`"${QNB_MATRIX_TABLE_NAME}" tablosunda ${QNB_HIGH_TIER_THRESHOLD} TL altı hiçbir bant güvenle ayrıştırılamadı`);
+  }
+  const lowRate = lowRows[0].rate!;
+  for (const r of lowRows) {
+    if (Math.abs(r.rate! - lowRate) > EPS_RATE) {
+      return fail(
+        `"${QNB_MATRIX_TABLE_NAME}" tablosunda ${QNB_HIGH_TIER_THRESHOLD} TL altı bantlar arasında 1-45 gün oranı tutarsız ("${r.altRaw}": ${r.rateRaw} vs "${lowRows[0].altRaw}": ${lowRows[0].rateRaw}) — sayfa yapısı değişmiş olabilir, manuel inceleme gerekli`
+      );
+    }
+  }
+
+  // 10.000.000 TL VE ÜZERİ bantlar: START değerleri sayfada yazım hatasız
+  // olduğu doğrulandı — NUMERİK eşleştirmeyle tek tek okunur.
+  const highRateByAlt = new Map<number, number>();
+  for (const r of matrixRows) {
+    if (r.alt !== null && r.alt >= QNB_HIGH_TIER_THRESHOLD) {
+      highRateByAlt.set(r.alt, r.rate!);
+    }
+  }
+
+  // 2) Ek yapısal doğrulama: "Alt Limit Tutarı (TL)" tablosu (0–999.999 TL
+  //    arası, yazım hatasız 8 bandı kapsar) — kayıtlı bantlarla alt_limit VE
+  //    vadesiz alt limit uyuşmalı, yoksa parse tamamen başarısız sayılır.
+  const altLimitTable = tables.find((t) => textOf(t.querySelector("thead")).includes(QNB_ALTLIMIT_TABLE_HEADER));
+  if (!altLimitTable) {
+    return fail(`"${QNB_ALTLIMIT_TABLE_HEADER}" tablosu bulunamadı — yapısal doğrulama yapılamadı, sayfa yapısı değişmiş olabilir`);
+  }
+  const altRows = Array.from(altLimitTable.querySelectorAll("tbody tr"));
+  interface AltRow { alt: number; vadesiz: number; rangeText: string; }
+  const altPageRows: AltRow[] = [];
+  for (const row of altRows) {
+    const cells = Array.from(row.querySelectorAll("td"));
+    if (cells.length < 2) continue;
+    const rangeText = textOf(cells[0]);
+    const rangeMatch = rangeText.match(/^([\d.,]+)\s*-\s*([\d.,]+)/);
+    if (!rangeMatch) continue;
+    const alt = parseQNBMoney(rangeMatch[1]);
+    const vadesiz = parseQNBMoney(textOf(cells[1]));
+    if (alt === null || vadesiz === null) continue;
+    altPageRows.push({ alt, vadesiz, rangeText });
+  }
+  if (altPageRows.length === 0) return fail(`"${QNB_ALTLIMIT_TABLE_HEADER}" tablosunda geçerli satır bulunamadı`);
+
+  for (const r of altPageRows) {
+    const s = stored.find((x) => Number(x.alt_limit).toFixed(2) === r.alt.toFixed(2));
+    if (!s) {
+      return fail(`Yapısal fark — manuel inceleme gerekli: sayfadaki "${r.rangeText}" tutar bandına kayıtlı bantlarda karşılık bulunamadı.`);
+    }
+    if (Math.abs(r.vadesiz - Number(s.vadesizde_kalacak)) > EPS_MONEY) {
+      return fail(
+        `Yapısal fark — manuel inceleme gerekli: "${r.rangeText}" bandında sayfadaki vadesiz alt limit (${r.vadesiz} TL) kayıtlı değerden (${s.vadesizde_kalacak} TL) farklı.`
+      );
+    }
+  }
+
+  // 3) Her kayıtlı banda, tutarına göre (10M eşiği) doğru oranı ata. 10M ve
+  //    üzeri her bant için matriste NUMERİK olarak eşleşen bir satır
+  //    bulunamazsa (yapısal fark), TÜM parse reddedilir.
+  const bands: ParsedBand[] = [];
+  for (const s of stored) {
+    const altNum = Number(s.alt_limit);
+    let rate: number;
+    if (altNum < QNB_HIGH_TIER_THRESHOLD) {
+      rate = lowRate;
+    } else {
+      const matched = highRateByAlt.get(altNum);
+      if (matched === undefined) {
+        return fail(
+          `Yapısal fark — manuel inceleme gerekli: kayıtlı ${altNum} TL bandına "${QNB_MATRIX_TABLE_NAME}" tablosunda numerik olarak eşleşen bir satır bulunamadı.`
+        );
+      }
+      rate = matched;
+    }
+
+    const candidates: RateCandidate[] = [{ column: QNB_STANDARD_COL, rate }];
+    bands.push({
+      alt_limit: altNum,
+      ust_limit: Number(s.ust_limit),
+      yillik_brut_oran: rate,
+      vadesizde_kalacak: Number(s.vadesizde_kalacak),
+      vadesiz_hesaplama_tipi: s.vadesiz_hesaplama_tipi,
+      vadesiz_oran: s.vadesiz_oran,
+      raw: {
+        [QNB_STANDARD_COL]: altNum < QNB_HIGH_TIER_THRESHOLD ? `${(lowRate * 100).toFixed(2)}%` : `${(rate * 100).toFixed(2)}%`,
+        [QNB_EXCLUDED_CLUB_NOTE]: headlineKulupRaw || "(başlık tablosu bulunamadı)",
+        "Başlık tablosu standart oranı (kanıt)": headlineStandartRaw || "(başlık tablosu bulunamadı)",
+      },
+      selected_rate_column: QNB_STANDARD_COL,
+      selected_rate_condition: "Genel başvuruya açık, koşulsuz 1-45 gün tanışma faizi (üyelik/segment koşulu yok).",
+      observed_rate_candidates: candidates,
+      source_table_name: QNB_MATRIX_TABLE_NAME,
+    });
+  }
+
+  return { ok: true, bands, rawTierCount: matrixRowEls.length };
+}
+
+const PARSERS: Record<string, (html: string, stored: BankRateRow[]) => ParseResult | Promise<ParseResult>> = {
   "TOM Bank": parseTomBank,
   "Fibabanka Fonlu Kiraz": parseFibabankaFonluKiraz,
   "Fibabanka Kiraz Hoş Geldin": parseFibabankaKirazHosgeldin,
@@ -784,6 +1389,8 @@ const PARSERS: Record<string, (html: string) => ParseResult> = {
   "Alternatifbank": parseAlternatifbankVOV,
   "ING ilk defa müşteri kampanyası": parseIngIlkDefaMusteri,
   "ING Hoş geldin": parseIngHosGeldin,
+  "Yapı Kredi": parseYapiKrediSinirsizHesap,
+  "QNB": parseQNBKazandiranGunluk,
 };
 
 // ---------------------------------------------------------------------------
@@ -894,7 +1501,7 @@ interface BankSourceRow {
   banks: { name: string } | null;
 }
 
-interface BankRateRow {
+export interface BankRateRow {
   id: string;
   alt_limit: number;
   ust_limit: number;
@@ -1020,7 +1627,9 @@ async function processSource(
     return { status: "unreachable", findingsCreated: 1 };
   }
 
-  if (source.page_marker_text && !fetched.html.includes(source.page_marker_text)) {
+  const markerHaystack = markerSearchText(fetched.html);
+
+  if (source.page_marker_text && !markerHaystack.includes(source.page_marker_text)) {
     await supabase.from("rate_check_findings").insert({
       run_id: runId,
       bank_source_id: source.id,
@@ -1049,7 +1658,36 @@ async function processSource(
     return { status: "parse_error", findingsCreated: 1 };
   }
 
-  const parsed = parser(fetched.html);
+  // Mevcut aktif bantlar parser'dan ÖNCE okunur: "rate-only" ürünlerde
+  // (Yapı Kredi, QNB) parser kendi bant sınırı üretmez — yalnızca canlı
+  // bandın kuruş-hassasiyetli alt_limit/ust_limit/vadesizde_kalacak
+  // değerlerini AYNEN kopyalayıp yalnızca yillik_brut_oran'ı kaynak
+  // sayfadan doldurur. Diğer parser'lar (TOM Bank, Akbank, vb.) bu
+  // parametreyi hiç kullanmaz — geriye dönük uyumluluk bozulmaz.
+  const { data: storedRates, error: storedErr } = await supabase
+    .from("bank_rates")
+    .select(
+      "id, alt_limit, ust_limit, vadesizde_kalacak, yillik_brut_oran, note, gerekli_fon_bakiyesi, vadesiz_hesaplama_tipi, vadesiz_oran"
+    )
+    .eq("bank_id", source.bank_id)
+    .eq("is_active", true)
+    .order("alt_limit", { ascending: true });
+
+  if (storedErr) {
+    await supabase.from("rate_check_findings").insert({
+      run_id: runId,
+      bank_source_id: source.id,
+      bank_id: source.bank_id,
+      finding_type: "parse_error",
+      evidence_url: source.source_url,
+      detail: `Mevcut oranlar okunamadı: ${storedErr.message}`,
+    });
+    return { status: "parse_error", findingsCreated: 1 };
+  }
+
+  const stored = (storedRates ?? []) as BankRateRow[];
+
+  const parsed = await parser(fetched.html, stored);
   if (!parsed.ok) {
     await supabase.from("rate_check_findings").insert({
       run_id: runId,
@@ -1084,31 +1722,35 @@ async function processSource(
     return { status: "parse_error", findingsCreated: 1 };
   }
 
-  const { data: storedRates, error: storedErr } = await supabase
-    .from("bank_rates")
-    .select(
-      "id, alt_limit, ust_limit, vadesizde_kalacak, yillik_brut_oran, note, gerekli_fon_bakiyesi, vadesiz_hesaplama_tipi, vadesiz_oran"
-    )
-    .eq("bank_id", source.bank_id)
-    .eq("is_active", true)
-    .order("alt_limit", { ascending: true });
-
-  if (storedErr) {
-    await supabase.from("rate_check_findings").insert({
-      run_id: runId,
-      bank_source_id: source.id,
-      bank_id: source.bank_id,
-      finding_type: "parse_error",
-      evidence_url: source.source_url,
-      detail: `Mevcut oranlar okunamadı: ${storedErr.message}`,
-    });
-    return { status: "parse_error", findingsCreated: 1 };
-  }
-
-  const stored = (storedRates ?? []) as BankRateRow[];
   const parsedSorted = [...parsed.bands].sort((a, b) => a.alt_limit - b.alt_limit);
 
-  if (stored.length !== parsedSorted.length) {
+  // Bantlar DİZİ SIRASINA göre değil, alt_limit'e (kuruş toleranslı) göre
+  // eşleştirilir — bir kaynak sayfa aynı SAYIDA bant döndürse bile farklı
+  // tutar sınırlarına karşılık geliyor olabilir (ör. bir bant ikiye
+  // bölünmüş/birleşmiş olabilir); yalnızca "sayı tutuyor" güvenli bir
+  // eşleştirme garantisi VERMEZ. Her stored bandın TAM OLARAK bir eşleşen
+  // alt_limit'i olmalı ve parsed tarafında fazladan/eşleşmeyen bant
+  // BULUNMAMALI — aksi halde (kısmen bile olsa) yapısal bir belirsizlik
+  // var demektir ve hiçbir bant için öneri üretilmez (hepsi ya da hiçbiri).
+  const parsedByAlt = new Map<string, ParsedBand>();
+  for (const b of parsedSorted) parsedByAlt.set((Math.round(b.alt_limit * 100) / 100).toFixed(2), b);
+
+  const unmatchedStored: BankRateRow[] = [];
+  const matchedPairs: { storedBand: BankRateRow; parsedBand: ParsedBand }[] = [];
+  const consumedAltKeys = new Set<string>();
+  for (const storedBand of stored) {
+    const key = (Math.round(Number(storedBand.alt_limit) * 100) / 100).toFixed(2);
+    const parsedBand = parsedByAlt.get(key);
+    if (!parsedBand) {
+      unmatchedStored.push(storedBand);
+    } else {
+      matchedPairs.push({ storedBand, parsedBand });
+      consumedAltKeys.add(key);
+    }
+  }
+  const extraParsed = parsedSorted.filter((b) => !consumedAltKeys.has((Math.round(b.alt_limit * 100) / 100).toFixed(2)));
+
+  if (unmatchedStored.length > 0 || extraParsed.length > 0 || stored.length !== parsedSorted.length) {
     await supabase.from("rate_check_findings").insert({
       run_id: runId,
       bank_source_id: source.id,
@@ -1117,7 +1759,15 @@ async function processSource(
       evidence_url: source.source_url,
       current_value: stored,
       observed_value: parsedSorted,
-      detail: `Bant sayısı değişmiş görünüyor (kayıtlı: ${stored.length}, sayfada bulunan: ${parsedSorted.length}) — otomatik eşleştirme güvenli değil, lütfen elle kontrol edin.`,
+      detail:
+        `Bant yapısı güvenle eşleştirilemedi — otomatik öneri üretilmedi (hepsi ya da hiçbiri). ` +
+        `Kayıtlı bant sayısı: ${stored.length}, sayfada bulunan: ${parsedSorted.length}. ` +
+        (unmatchedStored.length > 0
+          ? `Sayfada karşılığı bulunamayan kayıtlı alt limitler: ${unmatchedStored.map((b) => b.alt_limit).join(", ")}. `
+          : "") +
+        (extraParsed.length > 0
+          ? `Kayıtlı bantlarla eşleşmeyen, sayfada bulunan fazladan alt limitler: ${extraParsed.map((b) => b.alt_limit).join(", ")}.`
+          : ""),
     });
     await supabase
       .from("bank_sources")
@@ -1130,9 +1780,7 @@ async function processSource(
   let anyAcceptedDiff = false; // fark var ama daha önce admin tarafından kabul edilmiş
   let findingsCreated = 0;
 
-  for (let i = 0; i < stored.length; i++) {
-    const storedBand = stored[i];
-    const parsedBand = parsedSorted[i];
+  for (const { storedBand, parsedBand } of matchedPairs) {
     const storedAsParsed: ParsedBand = {
       alt_limit: Number(storedBand.alt_limit),
       ust_limit: Number(storedBand.ust_limit),
@@ -1416,6 +2064,12 @@ function formatAttemptsNote(attempts: BankSourcesAttempt[]): string | null {
   );
 }
 
+// import.meta.main: bu dosya Supabase tarafından doğrudan çalıştırıldığında
+// (üretimde HER ZAMAN doğru) sunucuyu başlatır; bir test dosyası tarafından
+// `import` edildiğinde (deno test) FALSE olur — böylece testler gerçek bir
+// HTTP sunucusu/port açmadan yalnızca parser/yardımcı fonksiyonları izole
+// şekilde çalıştırabilir. Üretim davranışı hiç değişmez.
+if (import.meta.main) {
 Deno.serve(async (req: Request) => {
   // Preflight, yetkilendirme kontrolünden ÖNCE karşılanır — tarayıcı OPTIONS
   // isteğine kimlik bilgisi göndermez, bu yüzden isAuthorized burada hiç
@@ -1705,3 +2359,4 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(req, { error: "Beklenmeyen hata", detail: message, run_id: runId }, 500);
   }
 });
+}

@@ -1,4 +1,4 @@
-const CACHE_NAME = "gunluk-mevduat-v18";
+const CACHE_NAME = "gunluk-mevduat-v19";
 const APP_SHELL = [
   "./",
   "./index.html",

@@ -364,6 +364,7 @@ code {
 .rk-badge-pending { background: var(--pending-bg); color: var(--pending-text); }
 .rk-badge-approved { background: #dbeafe; color: #1d4ed8; }
 .rk-badge-manual { background: #fff4d6; color: #8a5a00; }
+.rk-badge-parse-error { background: var(--danger-bg); color: var(--danger); }
 .rk-badge-unreachable { background: var(--danger-bg); color: var(--danger); }
 
 .bulk-action-row {

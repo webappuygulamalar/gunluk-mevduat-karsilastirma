@@ -1,0 +1,47 @@
+{
+  "d": {
+    "Data": {
+      "__type": "Akbank.Website.TimerJobs.Models.YeniSerbestHesapFaizOranlariModel",
+      "CurrencyCode": "888",
+      "ServiceData": {
+        "maxRate": "38.50",
+        "amountCount": 4,
+        "amountArray": [
+          "10,000 - 499,999",
+          "500,000 - 999,999",
+          "1,000,000 - 25,000,000",
+          "25,000,000 - 999,999,999,999,999"
+        ],
+        "periodData": {
+          "periodArrayCount": 2,
+          "rateArrayCount": 4,
+          "periodArray": [
+            {
+              "periodLine": "1 - 15",
+              "periodRateArray": [
+                "38,50",
+                "38,50",
+                "38,50",
+                "4,00"
+              ]
+            },
+            {
+              "periodLine": "16-45",
+              "periodRateArray": [
+                "30,00",
+                "30,00",
+                "30,00",
+                "4,00"
+              ]
+            }
+          ]
+        },
+        "minAmount": "10000.00",
+        "maxAmount": "25000000.00"
+      }
+    },
+    "StatusCode": 200,
+    "Message": null,
+    "ValidationErrors": []
+  }
+}

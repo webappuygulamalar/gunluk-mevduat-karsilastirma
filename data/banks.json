@@ -76,7 +76,7 @@
     "altLimit": 0,
     "ustLimit": 49999.99,
     "vadesizdeKalacak": 7500,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.4175,
     "not": ""
   },
   {
@@ -84,7 +84,7 @@
     "altLimit": 50000,
     "ustLimit": 74999.99,
     "vadesizdeKalacak": 10000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.4175,
     "not": ""
   },
   {
@@ -92,7 +92,7 @@
     "altLimit": 75000,
     "ustLimit": 99999.99,
     "vadesizdeKalacak": 12500,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.4175,
     "not": ""
   },
   {
@@ -100,7 +100,7 @@
     "altLimit": 100000,
     "ustLimit": 249999.99,
     "vadesizdeKalacak": 15000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.4175,
     "not": ""
   },
   {
@@ -108,7 +108,7 @@
     "altLimit": 250000,
     "ustLimit": 349999.99,
     "vadesizdeKalacak": 30000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.4175,
     "not": ""
   },
   {
@@ -116,7 +116,7 @@
     "altLimit": 350000,
     "ustLimit": 499999.99,
     "vadesizdeKalacak": 40000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.4175,
     "not": ""
   },
   {
@@ -124,7 +124,7 @@
     "altLimit": 500000,
     "ustLimit": 749999.99,
     "vadesizdeKalacak": 60000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.4175,
     "not": ""
   },
   {
@@ -132,7 +132,7 @@
     "altLimit": 750000,
     "ustLimit": 999999.99,
     "vadesizdeKalacak": 75000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.4175,
     "not": ""
   },
   {
@@ -140,7 +140,7 @@
     "altLimit": 1000000,
     "ustLimit": 1999999.99,
     "vadesizdeKalacak": 150000,
-    "yillikBrutOran": 0.4125,
+    "yillikBrutOran": 0.4175,
     "not": ""
   },
   {
@@ -148,7 +148,7 @@
     "altLimit": 2000000,
     "ustLimit": 2499999.99,
     "vadesizdeKalacak": 200000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.4175,
     "not": ""
   },
   {
@@ -156,7 +156,7 @@
     "altLimit": 2500000,
     "ustLimit": 3499999.99,
     "vadesizdeKalacak": 300000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.4175,
     "not": ""
   },
   {
@@ -164,7 +164,7 @@
     "altLimit": 3500000,
     "ustLimit": 4999999.99,
     "vadesizdeKalacak": 400000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.4175,
     "not": ""
   },
   {
@@ -172,7 +172,7 @@
     "altLimit": 5000000,
     "ustLimit": 7499999.99,
     "vadesizdeKalacak": 600000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.4175,
     "not": ""
   },
   {
@@ -180,7 +180,7 @@
     "altLimit": 7500000,
     "ustLimit": 9999999.99,
     "vadesizdeKalacak": 850000,
-    "yillikBrutOran": 0.415,
+    "yillikBrutOran": 0.4175,
     "not": ""
   },
   {
@@ -188,7 +188,7 @@
     "altLimit": 10000000,
     "ustLimit": 19999999.99,
     "vadesizdeKalacak": 1250000,
-    "yillikBrutOran": 0.28,
+    "yillikBrutOran": 0.2775,
     "not": ""
   },
   {
@@ -196,7 +196,7 @@
     "altLimit": 20000000,
     "ustLimit": 29999999.99,
     "vadesizdeKalacak": 2000000,
-    "yillikBrutOran": 0.28,
+    "yillikBrutOran": 0.2775,
     "not": ""
   },
   {
@@ -204,7 +204,7 @@
     "altLimit": 30000000,
     "ustLimit": 9999999999,
     "vadesizdeKalacak": 2000000,
-    "yillikBrutOran": 0.2575,
+    "yillikBrutOran": 0.255,
     "not": ""
   },
   {
@@ -212,7 +212,7 @@
     "altLimit": 10000,
     "ustLimit": 49999.99,
     "vadesizdeKalacak": 5000,
-    "yillikBrutOran": 0.41,
+    "yillikBrutOran": 0.405,
     "not": ""
   },
   {
@@ -220,7 +220,7 @@
     "altLimit": 50000,
     "ustLimit": 99999.99,
     "vadesizdeKalacak": 10000,
-    "yillikBrutOran": 0.41,
+    "yillikBrutOran": 0.405,
     "not": ""
   },
   {
@@ -228,7 +228,7 @@
     "altLimit": 100000,
     "ustLimit": 249999.99,
     "vadesizdeKalacak": 20000,
-    "yillikBrutOran": 0.41,
+    "yillikBrutOran": 0.405,
     "not": ""
   },
   {
@@ -236,7 +236,7 @@
     "altLimit": 250000,
     "ustLimit": 499999.99,
     "vadesizdeKalacak": 40000,
-    "yillikBrutOran": 0.41,
+    "yillikBrutOran": 0.405,
     "not": ""
   },
   {
@@ -244,7 +244,7 @@
     "altLimit": 500000,
     "ustLimit": 999999.99,
     "vadesizdeKalacak": 75000,
-    "yillikBrutOran": 0.41,
+    "yillikBrutOran": 0.405,
     "not": ""
   },
   {
@@ -252,7 +252,7 @@
     "altLimit": 1000000,
     "ustLimit": 1999999.99,
     "vadesizdeKalacak": 150000,
-    "yillikBrutOran": 0.41,
+    "yillikBrutOran": 0.405,
     "not": ""
   },
   {
@@ -260,7 +260,7 @@
     "altLimit": 2000000,
     "ustLimit": 2999999.99,
     "vadesizdeKalacak": 250000,
-    "yillikBrutOran": 0.41,
+    "yillikBrutOran": 0.405,
     "not": ""
   },
   {
@@ -268,7 +268,7 @@
     "altLimit": 3000000,
     "ustLimit": 4999999.99,
     "vadesizdeKalacak": 400000,
-    "yillikBrutOran": 0.41,
+    "yillikBrutOran": 0.405,
     "not": ""
   },
   {
@@ -276,7 +276,7 @@
     "altLimit": 5000000,
     "ustLimit": 10000000,
     "vadesizdeKalacak": 700000,
-    "yillikBrutOran": 0.41,
+    "yillikBrutOran": 0.405,
     "not": ""
   },
   {
@@ -925,7 +925,7 @@
   },
   {
     "banka": "Odeabank Yeni Müşteriye Özel Oksijen",
-    "altLimit": 20000001,
+    "altLimit": 20000000.01,
     "ustLimit": 25000000,
     "vadesizdeKalacak": 2000000,
     "yillikBrutOran": 0.145,

@@ -889,14 +889,21 @@ const RK_LABEL = {
   nochange: "Değişiklik yok",
   pending: "Onay bekliyor",
   approved: "Güncellendi",
-  manual: "Manuel kontrol",
+  // Kalıcı olarak manuel kalan bir ürün (requires_manual_check=true) ile
+  // otomatik ayrıştırmanın GEÇİCİ olarak başarısız olduğu bir teknik hata
+  // artık aynı etikette birleştirilmiyor (2026-09-16) — ikinci durum
+  // yanıltıcı biçimde "Manuel kontrol" gösteriliyordu, oysa parser
+  // düzeltilince kendiliğinden düzelebilecek bir hataydı.
+  manual_required: "Manuel kontrol gerekli",
+  parse_error: "Otomatik okuma hatası",
   unreachable: "Kaynağa ulaşılamadı",
 };
 const RK_BADGE_CLASS = {
   nochange: "rk-badge-nochange",
   pending: "rk-badge-pending",
   approved: "rk-badge-approved",
-  manual: "rk-badge-manual",
+  manual_required: "rk-badge-manual",
+  parse_error: "rk-badge-parse-error",
   unreachable: "rk-badge-unreachable",
 };
 
@@ -959,11 +966,18 @@ function renderRateSelection(f) {
 
 // Aksiyon alınabilecek bir bant yoksa (tüm rate_changed bulguları ya yok, ya
 // da zaten reddedilmiş), bankanın DÜŞTÜĞÜ geri dönüş kategorisi — öncelik
-// sırası: parse_error/manual_required > unreachable > (varsayılan) nochange.
+// sırası: manual_required > parse_error > unreachable > (varsayılan)
+// nochange. manual_required ve parse_error artık AYRI durumlar (2026-09-16):
+// biri "bu ürün tanımı gereği kalıcı manuel" (requires_manual_check=true),
+// diğeri "otomatik ayrıştırma bu çalışmada teknik bir nedenle başarısız
+// oldu" — pratikte bir kaynak için aynı çalışmada ikisi birden ASLA
+// oluşmaz (requires_manual_check=true olan kaynaklar parser'a hiç
+// uğramaz), öncelik sırası yalnızca teorik netlik içindir.
 function bankFallbackCategory(findingsForSource) {
   if (!findingsForSource || findingsForSource.length === 0) return "nochange";
   const types = findingsForSource.map((f) => f.finding_type);
-  if (types.includes("parse_error") || types.includes("manual_required")) return "manual";
+  if (types.includes("manual_required")) return "manual_required";
+  if (types.includes("parse_error")) return "parse_error";
   if (types.includes("unreachable")) return "unreachable";
   return "nochange";
 }
@@ -1158,15 +1172,35 @@ async function loadDailyCheck() {
     const sourceFindings = findingsBySource.get(source.id) || [];
     const rkStatus = bankFallbackCategory(sourceFindings);
     if (rkStatus === "nochange") countNoChange++;
-    else if (rkStatus === "manual") countManual++;
+    else if (rkStatus === "manual_required" || rkStatus === "parse_error") countManual++;
     else if (rkStatus === "unreachable") countUnreachable++;
+
+    // manual_required/parse_error/unreachable için "Detay" gerçek hata
+    // metnini ve kaynak bağlantısını göstersin — önceden bu satırlar için
+    // hiç Detay içeriği doldurulmuyordu, yalnızca düz "Kaynağı Aç" linki
+    // vardı (2026-09-16'da düzeltildi).
+    let findingId = null;
+    if (rkStatus !== "nochange") {
+      const relevantFinding = sourceFindings.find((f) => f.finding_type === rkStatus);
+      if (relevantFinding) {
+        findingId = relevantFinding.id;
+        dailyDetailContent.set(relevantFinding.id, {
+          title: `${bankName} — ${RK_LABEL[rkStatus]}`,
+          html: `
+            <div class="daily-check-finding">
+              <p>${escapeHtml(relevantFinding.detail || "Ayrıntı kaydı yok.")}</p>
+              <p><a href="${escapeHtml(source.source_url)}" target="_blank" rel="noopener">Resmî kaynağı aç</a></p>
+            </div>`,
+        });
+      }
+    }
 
     summaryRows.push({
       rkStatus,
       bankName,
       sourceUrl: source.source_url,
       requestId: null,
-      findingId: null,
+      findingId,
       alt: null,
       ust: null,
       oldRate: null,
@@ -1248,7 +1282,7 @@ function renderDailyCheckTable() {
     let actionCell = "—";
     if (row.findingId && dailyDetailContent.has(row.findingId)) {
       actionCell = `<button type="button" class="link-btn detail-btn" data-daily-detail-btn data-finding-id="${row.findingId}">Detay</button>`;
-    } else if (row.rkStatus === "manual" || row.rkStatus === "unreachable") {
+    } else if (row.rkStatus === "manual_required" || row.rkStatus === "parse_error" || row.rkStatus === "unreachable") {
       actionCell = `<a href="${escapeHtml(row.sourceUrl)}" target="_blank" rel="noopener">Kaynağı Aç</a>`;
     }
 
