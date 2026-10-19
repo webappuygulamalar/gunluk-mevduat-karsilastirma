@@ -282,7 +282,7 @@
   {
     "banka": "Fibabanka Kiraz Hoş Geldin",
     "altLimit": 10000,
-    "ustLimit": 24999,
+    "ustLimit": 24999.99,
     "vadesizdeKalacak": 5000,
     "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
@@ -290,7 +290,7 @@
   {
     "banka": "Fibabanka Kiraz Hoş Geldin",
     "altLimit": 25000,
-    "ustLimit": 49999,
+    "ustLimit": 49999.99,
     "vadesizdeKalacak": 7500,
     "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
@@ -298,7 +298,7 @@
   {
     "banka": "Fibabanka Kiraz Hoş Geldin",
     "altLimit": 50000,
-    "ustLimit": 99999,
+    "ustLimit": 99999.99,
     "vadesizdeKalacak": 10000,
     "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
@@ -306,7 +306,7 @@
   {
     "banka": "Fibabanka Kiraz Hoş Geldin",
     "altLimit": 100000,
-    "ustLimit": 249999,
+    "ustLimit": 249999.99,
     "vadesizdeKalacak": 20000,
     "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
@@ -314,7 +314,7 @@
   {
     "banka": "Fibabanka Kiraz Hoş Geldin",
     "altLimit": 250000,
-    "ustLimit": 499999,
+    "ustLimit": 499999.99,
     "vadesizdeKalacak": 40000,
     "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
@@ -322,7 +322,7 @@
   {
     "banka": "Fibabanka Kiraz Hoş Geldin",
     "altLimit": 500000,
-    "ustLimit": 999999,
+    "ustLimit": 999999.99,
     "vadesizdeKalacak": 65000,
     "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
@@ -330,7 +330,7 @@
   {
     "banka": "Fibabanka Kiraz Hoş Geldin",
     "altLimit": 1000000,
-    "ustLimit": 1999999,
+    "ustLimit": 1999999.99,
     "vadesizdeKalacak": 175000,
     "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
@@ -338,7 +338,7 @@
   {
     "banka": "Fibabanka Kiraz Hoş Geldin",
     "altLimit": 2000000,
-    "ustLimit": 2999999,
+    "ustLimit": 2999999.99,
     "vadesizdeKalacak": 300000,
     "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
@@ -346,7 +346,7 @@
   {
     "banka": "Fibabanka Kiraz Hoş Geldin",
     "altLimit": 3000000,
-    "ustLimit": 3999999,
+    "ustLimit": 3999999.99,
     "vadesizdeKalacak": 400000,
     "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
@@ -354,7 +354,7 @@
   {
     "banka": "Fibabanka Kiraz Hoş Geldin",
     "altLimit": 4000000,
-    "ustLimit": 4999999,
+    "ustLimit": 4999999.99,
     "vadesizdeKalacak": 500000,
     "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
@@ -362,7 +362,7 @@
   {
     "banka": "Fibabanka Kiraz Hoş Geldin",
     "altLimit": 5000000,
-    "ustLimit": 7499999,
+    "ustLimit": 7499999.99,
     "vadesizdeKalacak": 750000,
     "yillikBrutOran": 0.42,
     "not": "Dijital kanallara özel Kiraz Hesap Hoş Geldin oranı."
@@ -378,7 +378,7 @@
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 10000,
-    "ustLimit": 24999,
+    "ustLimit": 24999.99,
     "vadesizdeKalacak": 5000,
     "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 5000,
@@ -387,7 +387,7 @@
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 25000,
-    "ustLimit": 49999,
+    "ustLimit": 49999.99,
     "vadesizdeKalacak": 7500,
     "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 10000,
@@ -396,7 +396,7 @@
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 50000,
-    "ustLimit": 99999,
+    "ustLimit": 99999.99,
     "vadesizdeKalacak": 10000,
     "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 20000,
@@ -405,7 +405,7 @@
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 100000,
-    "ustLimit": 249999,
+    "ustLimit": 249999.99,
     "vadesizdeKalacak": 20000,
     "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 50000,
@@ -414,7 +414,7 @@
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 250000,
-    "ustLimit": 499999,
+    "ustLimit": 499999.99,
     "vadesizdeKalacak": 40000,
     "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 100000,
@@ -423,7 +423,7 @@
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 500000,
-    "ustLimit": 999999,
+    "ustLimit": 999999.99,
     "vadesizdeKalacak": 65000,
     "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 200000,
@@ -432,7 +432,7 @@
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 1000000,
-    "ustLimit": 1999999,
+    "ustLimit": 1999999.99,
     "vadesizdeKalacak": 175000,
     "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 400000,
@@ -441,7 +441,7 @@
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 2000000,
-    "ustLimit": 2999999,
+    "ustLimit": 2999999.99,
     "vadesizdeKalacak": 300000,
     "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 600000,
@@ -450,7 +450,7 @@
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 3000000,
-    "ustLimit": 3999999,
+    "ustLimit": 3999999.99,
     "vadesizdeKalacak": 400000,
     "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 800000,
@@ -459,7 +459,7 @@
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 4000000,
-    "ustLimit": 4999999,
+    "ustLimit": 4999999.99,
     "vadesizdeKalacak": 500000,
     "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 1000000,
@@ -468,7 +468,7 @@
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 5000000,
-    "ustLimit": 7499999,
+    "ustLimit": 7499999.99,
     "vadesizdeKalacak": 750000,
     "yillikBrutOran": 0.44,
     "gerekliFonBakiyesi": 1250000,

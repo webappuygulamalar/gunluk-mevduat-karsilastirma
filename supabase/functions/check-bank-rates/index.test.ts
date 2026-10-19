@@ -8,6 +8,8 @@
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import {
   parseAkbankSerbestPlus,
+  parseFibabankaFonluKiraz,
+  parseFibabankaKirazHosgeldin,
   parseYapiKrediSinirsizHesap,
   parseQNBKazandiranGunluk,
   parseOdeabankYeniMusteriOksijen,
@@ -96,6 +98,52 @@ Deno.test("parseTRMoney: TR binlik/ondalık ayırıcı", () => {
   assertEquals(parseTRMoney("49.999,99 TL"), 49999.99);
   assertEquals(parseTRMoney("10.000"), 10000);
   assertEquals(parseTRMoney(""), null);
+});
+
+// ---------------------------------------------------------------------------
+// Fibabanka — iki ürün, ortak tablo ve kuruş bazlı bant normalizasyonu
+// ---------------------------------------------------------------------------
+Deno.test("Fibabanka: iki ürünün 12 bandı kuruş boşluğu bırakmadan normalize edilir", async () => {
+  const html = await readFixture("fibabanka_kiraz_ok.html");
+  const hosgeldin = parseFibabankaKirazHosgeldin(html);
+  const fonlu = parseFibabankaFonluKiraz(html);
+
+  assert(hosgeldin.ok, `Hoş Geldin parse hatası: ${!hosgeldin.ok ? hosgeldin.error : ""}`);
+  assert(fonlu.ok, `Fonlu parse hatası: ${!fonlu.ok ? fonlu.error : ""}`);
+  if (!hosgeldin.ok || !fonlu.ok) return;
+
+  assertEquals(hosgeldin.bands.length, 12);
+  assertEquals(fonlu.bands.length, 12);
+
+  for (const result of [hosgeldin, fonlu]) {
+    const bands = [...result.bands].sort((a, b) => a.alt_limit - b.alt_limit);
+    for (let i = 0; i < bands.length - 1; i++) {
+      assertEquals(
+        Math.round((bands[i + 1].alt_limit - bands[i].ust_limit) * 100) / 100,
+        0.01,
+        `${i + 1}. ve ${i + 2}. bant arasında 0,01 TL geçiş olmalı`,
+      );
+    }
+    assertEquals(bands[0].ust_limit, 24999.99);
+    assertEquals(bands[10].ust_limit, 7499999.99);
+    assertEquals(bands[11].ust_limit, 10000000, "son bandın üst sınırı değiştirilmemeli");
+  }
+
+  assertEquals(hosgeldin.bands[0].yillik_brut_oran, 0.41);
+  assertEquals(fonlu.bands[0].yillik_brut_oran, 0.43);
+  assertStringIncludes(String(hosgeldin.bands[0].raw?.Normalizasyon), "+0,99 TL");
+  assertStringIncludes(String(fonlu.bands[0].raw?.Normalizasyon), "+0,99 TL");
+});
+
+Deno.test("Fibabanka: 1 TL/0,01 TL dışında yapısal boşluk varsa oran önerilmez", async () => {
+  const html = await readFixture("fibabanka_kiraz_internal_gap.html");
+  const hosgeldin = parseFibabankaKirazHosgeldin(html);
+  const fonlu = parseFibabankaFonluKiraz(html);
+
+  assertEquals(hosgeldin.ok, false);
+  assertEquals(fonlu.ok, false);
+  if (!hosgeldin.ok) assertStringIncludes(hosgeldin.error ?? "", "bitişik değil");
+  if (!fonlu.ok) assertStringIncludes(fonlu.error ?? "", "bitişik değil");
 });
 
 // ---------------------------------------------------------------------------

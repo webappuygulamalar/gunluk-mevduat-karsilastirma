@@ -268,6 +268,8 @@ function parseTomBank(html: string): ParseResult {
 interface FibaKirazRawRow {
   alt: number;
   ust: number;
+  rangeRaw: string;
+  normalizedUpperBound: boolean;
   vadesiz: number;
   vadesizRaw: string;
   standartOran: number;
@@ -322,13 +324,53 @@ function parseFibaKirazRawRows(html: string): { ok: true; rows: FibaKirazRawRow[
       return { ok: false, error: `Sayısal alan ayrıştırılamadı (satır: "${rangeText}")` };
     }
 
-    rows.push({ alt, ust, vadesiz, vadesizRaw, standartOran, standartRaw, dijitalOran, dijitalRaw, fonluEk, fonluEkRaw });
+    rows.push({
+      alt,
+      ust,
+      rangeRaw: rangeText,
+      normalizedUpperBound: false,
+      vadesiz,
+      vadesizRaw,
+      standartOran,
+      standartRaw,
+      dijitalOran,
+      dijitalRaw,
+      fonluEk,
+      fonluEkRaw,
+    });
+  }
+
+  rows.sort((a, b) => a.alt - b.alt);
+
+  // Fibabanka resmi tabloda kuruşları göstermeyip ardışık kademeleri
+  // "10.000-24.999 / 25.000-49.999" biçiminde yayımlıyor. Uygulama TL'yi
+  // kuruş hassasiyetinde hesapladığı için bu ham sınırlar 24.999,01-24.999,99
+  // arasında gerçek bir kapsama boşluğu yaratır. Kaynakta TAM 1 TL geçiş
+  // varsa üst sınırı bir sonraki alt sınırdan 0,01 TL eksiğe tamamlarız.
+  // Fark başka bir değerse sessizce tahmin yürütmeyip tüm parse'ı durdururuz.
+  for (let i = 0; i < rows.length - 1; i++) {
+    const current = rows[i];
+    const next = rows[i + 1];
+    const gap = Math.round((next.alt - current.ust) * 100) / 100;
+
+    if (Math.abs(gap - 1) < 1e-9) {
+      current.ust = Math.round((next.alt - 0.01) * 100) / 100;
+      current.normalizedUpperBound = true;
+      continue;
+    }
+
+    if (Math.abs(gap - 0.01) > 1e-9) {
+      return {
+        ok: false,
+        error: `Fibabanka bantları bitişik değil: ${current.rangeRaw} sonrasında ${next.rangeRaw} geliyor (geçiş ${gap} TL).`,
+      };
+    }
   }
 
   return { ok: true, rows };
 }
 
-function parseFibabankaFonluKiraz(html: string): ParseResult {
+export function parseFibabankaFonluKiraz(html: string): ParseResult {
   const raw = parseFibaKirazRawRows(html);
   if (!raw.ok) return fail(raw.error);
 
@@ -339,7 +381,15 @@ function parseFibabankaFonluKiraz(html: string): ParseResult {
     vadesizde_kalacak: r.vadesiz,
     vadesiz_hesaplama_tipi: "sabit",
     vadesiz_oran: null,
-    raw: { "Faiz İşletilmeyecek Min. Tutar": r.vadesizRaw, [FIBA_KIRAZ_DIJITAL_COL]: r.dijitalRaw, "Fonlu Kiraz Ek Faiz Oranı": r.fonluEkRaw },
+    raw: {
+      "Kaynak tutar aralığı": r.rangeRaw,
+      "Faiz İşletilmeyecek Min. Tutar": r.vadesizRaw,
+      [FIBA_KIRAZ_DIJITAL_COL]: r.dijitalRaw,
+      "Fonlu Kiraz Ek Faiz Oranı": r.fonluEkRaw,
+      ...(r.normalizedUpperBound
+        ? { Normalizasyon: "TL kuruşlarında bant boşluğu oluşmaması için üst sınır +0,99 TL tamamlandı" }
+        : {}),
+    },
     selected_rate_column: `${FIBA_KIRAZ_DIJITAL_COL} + Fonlu Kiraz Ek Faiz Oranı`,
     selected_rate_condition: "Fonlu Kiraz: dijital/görüntülü bankacılık hoş geldin oranı + yeterli Fiba Portföy TL fon bakiyesiyle kazanılan ek faiz.",
     observed_rate_candidates: [
@@ -353,7 +403,7 @@ function parseFibabankaFonluKiraz(html: string): ParseResult {
   return { ok: true, bands, rawTierCount: bands.length };
 }
 
-function parseFibabankaKirazHosgeldin(html: string): ParseResult {
+export function parseFibabankaKirazHosgeldin(html: string): ParseResult {
   const raw = parseFibaKirazRawRows(html);
   if (!raw.ok) return fail(raw.error);
 
@@ -369,7 +419,14 @@ function parseFibabankaKirazHosgeldin(html: string): ParseResult {
       vadesizde_kalacak: r.vadesiz,
       vadesiz_hesaplama_tipi: "sabit",
       vadesiz_oran: null,
-      raw: { "Faiz İşletilmeyecek Min. Tutar": r.vadesizRaw, [winningColumn]: winningRaw },
+      raw: {
+        "Kaynak tutar aralığı": r.rangeRaw,
+        "Faiz İşletilmeyecek Min. Tutar": r.vadesizRaw,
+        [winningColumn]: winningRaw,
+        ...(r.normalizedUpperBound
+          ? { Normalizasyon: "TL kuruşlarında bant boşluğu oluşmaması için üst sınır +0,99 TL tamamlandı" }
+          : {}),
+      },
       selected_rate_column: winningColumn,
       selected_rate_condition: dijitalWins
         ? "Yalnızca görüntülü bankacılık/dijital kanallardan açılan Kiraz Hesap için geçerli."
