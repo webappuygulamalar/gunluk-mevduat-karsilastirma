@@ -380,108 +380,108 @@
     "altLimit": 10000,
     "ustLimit": 24999.99,
     "vadesizdeKalacak": 5000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "gerekliFonBakiyesi": 5000,
-    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "Fonlu Kiraz: dijital/görüntülü bankacılık hoş geldin oranı + yeterli Fiba Portföy TL fon bakiyesiyle kazanılan ek faiz."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 25000,
     "ustLimit": 49999.99,
     "vadesizdeKalacak": 7500,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "gerekliFonBakiyesi": 10000,
-    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "Fonlu Kiraz: dijital/görüntülü bankacılık hoş geldin oranı + yeterli Fiba Portföy TL fon bakiyesiyle kazanılan ek faiz."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 50000,
     "ustLimit": 99999.99,
     "vadesizdeKalacak": 10000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "gerekliFonBakiyesi": 20000,
-    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "Fonlu Kiraz: dijital/görüntülü bankacılık hoş geldin oranı + yeterli Fiba Portföy TL fon bakiyesiyle kazanılan ek faiz."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 100000,
     "ustLimit": 249999.99,
     "vadesizdeKalacak": 20000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "gerekliFonBakiyesi": 50000,
-    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "Fonlu Kiraz: dijital/görüntülü bankacılık hoş geldin oranı + yeterli Fiba Portföy TL fon bakiyesiyle kazanılan ek faiz."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 250000,
     "ustLimit": 499999.99,
     "vadesizdeKalacak": 40000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "gerekliFonBakiyesi": 100000,
-    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "Fonlu Kiraz: dijital/görüntülü bankacılık hoş geldin oranı + yeterli Fiba Portföy TL fon bakiyesiyle kazanılan ek faiz."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 500000,
     "ustLimit": 999999.99,
     "vadesizdeKalacak": 65000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "gerekliFonBakiyesi": 200000,
-    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "Fonlu Kiraz: dijital/görüntülü bankacılık hoş geldin oranı + yeterli Fiba Portföy TL fon bakiyesiyle kazanılan ek faiz."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 1000000,
     "ustLimit": 1999999.99,
     "vadesizdeKalacak": 175000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "gerekliFonBakiyesi": 400000,
-    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "Fonlu Kiraz: dijital/görüntülü bankacılık hoş geldin oranı + yeterli Fiba Portföy TL fon bakiyesiyle kazanılan ek faiz."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 2000000,
     "ustLimit": 2999999.99,
     "vadesizdeKalacak": 300000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "gerekliFonBakiyesi": 600000,
-    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "Fonlu Kiraz: dijital/görüntülü bankacılık hoş geldin oranı + yeterli Fiba Portföy TL fon bakiyesiyle kazanılan ek faiz."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 3000000,
     "ustLimit": 3999999.99,
     "vadesizdeKalacak": 400000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "gerekliFonBakiyesi": 800000,
-    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "Fonlu Kiraz: dijital/görüntülü bankacılık hoş geldin oranı + yeterli Fiba Portföy TL fon bakiyesiyle kazanılan ek faiz."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 4000000,
     "ustLimit": 4999999.99,
     "vadesizdeKalacak": 500000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "gerekliFonBakiyesi": 1000000,
-    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "Fonlu Kiraz: dijital/görüntülü bankacılık hoş geldin oranı + yeterli Fiba Portföy TL fon bakiyesiyle kazanılan ek faiz."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 5000000,
     "ustLimit": 7499999.99,
     "vadesizdeKalacak": 750000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "gerekliFonBakiyesi": 1250000,
-    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "Fonlu Kiraz: dijital/görüntülü bankacılık hoş geldin oranı + yeterli Fiba Portföy TL fon bakiyesiyle kazanılan ek faiz."
   },
   {
     "banka": "Fibabanka Fonlu Kiraz",
     "altLimit": 7500000,
     "ustLimit": 10000000,
     "vadesizdeKalacak": 1000000,
-    "yillikBrutOran": 0.44,
+    "yillikBrutOran": 0.43,
     "gerekliFonBakiyesi": 1500000,
-    "not": "%44 oran, %42 Kiraz Hoş Geldin + %2 Fonlu Kiraz ek faizinden oluşur. Ek faiz için minimum Fiba Portföy TL fon bakiyesi şartı vardır."
+    "not": "Fonlu Kiraz: dijital/görüntülü bankacılık hoş geldin oranı + yeterli Fiba Portföy TL fon bakiyesiyle kazanılan ek faiz."
   },
   {
     "banka": "Alternatifbank",

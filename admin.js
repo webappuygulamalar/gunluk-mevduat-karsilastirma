@@ -1101,7 +1101,7 @@ async function loadDailyCheck() {
   if (lastRun) {
     const { data: findingsData } = await client
       .from("rate_check_findings")
-      .select("id, bank_source_id, bank_id, finding_type")
+      .select("id, bank_source_id, bank_id, finding_type, detail")
       .eq("run_id", lastRun.id);
     findings = findingsData || [];
   }

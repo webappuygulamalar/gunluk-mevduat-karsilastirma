@@ -10,6 +10,8 @@ import {
   parseAkbankSerbestPlus,
   parseFibabankaFonluKiraz,
   parseFibabankaKirazHosgeldin,
+  parseTomBank,
+  matchStoredBands,
   parseYapiKrediSinirsizHesap,
   parseQNBKazandiranGunluk,
   parseOdeabankYeniMusteriOksijen,
@@ -70,6 +72,18 @@ const QNB_STORED: BankRateRow[] = [
   stubRate({ alt_limit: 30000000, ust_limit: 9999999999, vadesizde_kalacak: 2000000 }),
 ];
 
+const TOM_STORED: BankRateRow[] = [
+  stubRate({ alt_limit: 7500, ust_limit: 49999.99, vadesizde_kalacak: 7500, yillik_brut_oran: 0.43 }),
+  stubRate({ alt_limit: 50000, ust_limit: 249999.99, vadesizde_kalacak: 35000, yillik_brut_oran: 0.43 }),
+  stubRate({ alt_limit: 250000, ust_limit: 499999.99, vadesizde_kalacak: 50000, yillik_brut_oran: 0.43 }),
+  stubRate({ alt_limit: 500000, ust_limit: 1249999.99, vadesizde_kalacak: 200000, yillik_brut_oran: 0.475 }),
+  stubRate({ alt_limit: 1250000, ust_limit: 2499999.99, vadesizde_kalacak: 450000, yillik_brut_oran: 0.48 }),
+  stubRate({ alt_limit: 2500000, ust_limit: 7499999.99, vadesizde_kalacak: 775000, yillik_brut_oran: 0.44 }),
+  stubRate({ alt_limit: 7500000, ust_limit: 17499999.99, vadesizde_kalacak: 1750000, yillik_brut_oran: 0.44 }),
+  stubRate({ alt_limit: 17500000, ust_limit: 34999999.99, vadesizde_kalacak: 3000000, yillik_brut_oran: 0.425 }),
+  stubRate({ alt_limit: 35000000, ust_limit: 75000000, vadesizde_kalacak: 5000000, yillik_brut_oran: 0.41 }),
+];
+
 function withFetchStub<T>(impl: (input: string | URL | Request, init?: RequestInit) => Promise<Response>, fn: () => Promise<T>): Promise<T> {
   const original = globalThis.fetch;
   // deno-lint-ignore no-explicit-any
@@ -98,6 +112,47 @@ Deno.test("parseTRMoney: TR binlik/ondalık ayırıcı", () => {
   assertEquals(parseTRMoney("49.999,99 TL"), 49999.99);
   assertEquals(parseTRMoney("10.000"), 10000);
   assertEquals(parseTRMoney(""), null);
+});
+
+// ---------------------------------------------------------------------------
+// TOM Bank — resmî tabloda tek sınırın 17,5M -> 20M taşınması
+// ---------------------------------------------------------------------------
+Deno.test("TOM Bank: güncel 9 bant kuruş boşluğu bırakmadan ayrıştırılır", async () => {
+  const html = await readFixture("tombank_current_structure.html");
+  const result = parseTomBank(html);
+  assert(result.ok, `TOM parse hatası: ${result.error ?? ""}`);
+  assertEquals(result.bands.length, 9);
+  for (let i = 0; i < result.bands.length - 1; i++) {
+    assertEquals(Math.round((result.bands[i + 1].alt_limit - result.bands[i].ust_limit) * 100) / 100, 0.01);
+  }
+  assertEquals(result.bands[6].alt_limit, 7500000);
+  assertEquals(result.bands[6].ust_limit, 19999999.99);
+  assertEquals(result.bands[6].yillik_brut_oran, 0.44);
+  assertEquals(result.bands[7].alt_limit, 20000000);
+  assertEquals(result.bands[7].yillik_brut_oran, 0.39);
+  assertEquals(result.bands[8].yillik_brut_oran, 0.39);
+});
+
+Deno.test("TOM Bank: tek yapısal sınır değişikliği güvenli satır sırasıyla eşleştirilir", async () => {
+  const html = await readFixture("tombank_current_structure.html");
+  const result = parseTomBank(html);
+  assert(result.ok);
+  const matched = matchStoredBands("TOM Bank", TOM_STORED, result.bands);
+  assert(matched.ok, matched.error);
+  assertEquals(matched.structuralChange, true);
+  assertEquals(matched.pairs.length, 9);
+  assertEquals(matched.pairs[7].storedBand.alt_limit, 17500000);
+  assertEquals(matched.pairs[7].parsedBand.alt_limit, 20000000);
+
+  const otherBank = matchStoredBands("Başka Banka", TOM_STORED, result.bands);
+  assertEquals(otherBank.ok, false, "satır-sırası istisnası yalnızca doğrulanmış TOM Bank akışına ait olmalı");
+
+  const shiftedInsertion = result.bands.map((band) => ({ ...band }));
+  shiftedInsertion[5].alt_limit = 2600000;
+  shiftedInsertion.splice(7, 1);
+  shiftedInsertion.push({ ...result.bands[7], alt_limit: 76000000, ust_limit: 80000000 });
+  const unsafeOrdinalShift = matchStoredBands("TOM Bank", TOM_STORED, shiftedInsertion);
+  assertEquals(unsafeOrdinalShift.ok, false, "farklı sıra konumunda silme/ekleme, tek değişen sınır gibi kabul edilmemeli");
 });
 
 // ---------------------------------------------------------------------------

@@ -187,7 +187,7 @@ export function fail(error: string): ParseResult {
 // yapısına güvenir; yapı beklenmedikse tahmin üretmez, hata döner.
 // ---------------------------------------------------------------------------
 
-function parseTomBank(html: string): ParseResult {
+export function parseTomBank(html: string): ParseResult {
   const doc = new DOMParser().parseFromString(html, "text/html");
   if (!doc) return fail("HTML ayrıştırılamadı");
 
@@ -1570,6 +1570,105 @@ export interface BankRateRow {
   vadesiz_oran: number | null;
 }
 
+export interface BandMatchResult {
+  ok: boolean;
+  pairs: { storedBand: BankRateRow; parsedBand: ParsedBand }[];
+  structuralChange: boolean;
+  error?: string;
+}
+
+function bankRateAsParsed(band: BankRateRow): ParsedBand {
+  return {
+    alt_limit: Number(band.alt_limit),
+    ust_limit: Number(band.ust_limit),
+    yillik_brut_oran: Number(band.yillik_brut_oran),
+    vadesizde_kalacak: Number(band.vadesizde_kalacak),
+    vadesiz_hesaplama_tipi: band.vadesiz_hesaplama_tipi,
+    vadesiz_oran: band.vadesiz_oran !== null ? Number(band.vadesiz_oran) : null,
+  };
+}
+
+// Normal akışta bantlar alt_limit ile birebir eşleştirilir. TOM Bank'ın
+// resmî tablosu 2026-10-19'da 17,5M sınırını 20M'ye taşıdı; bant sayısı ve
+// sırası aynı kaldığı için yalnızca bu ürün için, sıkı korumalar altında,
+// satır sırası yapısal kimlik olarak kullanılabilir. Koşullar:
+//   - iki tarafta da aynı sayıda bant,
+//   - yalnızca tek alt sınır değişmiş,
+//   - ilk alt ve son üst sınır aynı,
+//   - parsed küme kendi içinde validateBands ile zaten doğrulanmış.
+// Bunlardan biri bozulursa tahmin yürütülmez ve parse_error üretilir.
+export function matchStoredBands(bankName: string, stored: BankRateRow[], parsed: ParsedBand[]): BandMatchResult {
+  const storedSorted = [...stored].sort((a, b) => Number(a.alt_limit) - Number(b.alt_limit));
+  const parsedSorted = [...parsed].sort((a, b) => a.alt_limit - b.alt_limit);
+  const parsedByAlt = new Map<string, ParsedBand>();
+  for (const b of parsedSorted) parsedByAlt.set((Math.round(b.alt_limit * 100) / 100).toFixed(2), b);
+
+  const unmatchedStored: BankRateRow[] = [];
+  const pairs: { storedBand: BankRateRow; parsedBand: ParsedBand }[] = [];
+  const consumedAltKeys = new Set<string>();
+  for (const storedBand of storedSorted) {
+    const key = (Math.round(Number(storedBand.alt_limit) * 100) / 100).toFixed(2);
+    const parsedBand = parsedByAlt.get(key);
+    if (!parsedBand) unmatchedStored.push(storedBand);
+    else {
+      pairs.push({ storedBand, parsedBand });
+      consumedAltKeys.add(key);
+    }
+  }
+  const extraParsed = parsedSorted.filter((b) => !consumedAltKeys.has((Math.round(b.alt_limit * 100) / 100).toFixed(2)));
+  const ordinalAltMismatches = storedSorted.reduce<number[]>((indices, storedBand, index) => {
+    const parsedBand = parsedSorted[index];
+    if (!parsedBand || Math.abs(Number(storedBand.alt_limit) - parsedBand.alt_limit) > EPS_MONEY) indices.push(index);
+    return indices;
+  }, []);
+
+  if (unmatchedStored.length === 0 && extraParsed.length === 0 && storedSorted.length === parsedSorted.length) {
+    return { ok: true, pairs, structuralChange: false };
+  }
+
+  const tomSafeOrdinalChange =
+    bankName === "TOM Bank" &&
+    storedSorted.length === parsedSorted.length &&
+    storedSorted.length >= 2 &&
+    unmatchedStored.length === 1 &&
+    extraParsed.length === 1 &&
+    ordinalAltMismatches.length === 1 &&
+    Math.abs(Number(storedSorted[0].alt_limit) - parsedSorted[0].alt_limit) <= EPS_MONEY &&
+    Math.abs(Number(storedSorted.at(-1)?.ust_limit) - Number(parsedSorted.at(-1)?.ust_limit)) <= EPS_MONEY;
+
+  if (tomSafeOrdinalChange) {
+    return {
+      ok: true,
+      structuralChange: true,
+      pairs: storedSorted.map((storedBand, index) => ({
+        storedBand,
+        parsedBand: {
+          ...parsedSorted[index],
+          raw: {
+            ...(parsedSorted[index].raw ?? {}),
+            "Yapısal eşleştirme": "TOM Bank resmî tablosundaki tek sınır değişikliği, doğrulanmış satır sırasına göre eşleştirildi",
+          },
+        },
+      })),
+    };
+  }
+
+  return {
+    ok: false,
+    pairs: [],
+    structuralChange: false,
+    error:
+      `Bant yapısı güvenle eşleştirilemedi — otomatik öneri üretilmedi (hepsi ya da hiçbiri). ` +
+      `Kayıtlı bant sayısı: ${storedSorted.length}, sayfada bulunan: ${parsedSorted.length}. ` +
+      (unmatchedStored.length > 0
+        ? `Sayfada karşılığı bulunamayan kayıtlı alt limitler: ${unmatchedStored.map((b) => b.alt_limit).join(", ")}. `
+        : "") +
+      (extraParsed.length > 0
+        ? `Kayıtlı bantlarla eşleşmeyen, sayfada bulunan fazladan alt limitler: ${extraParsed.map((b) => b.alt_limit).join(", ")}.`
+        : ""),
+  };
+}
+
 async function fetchSourcePage(url: string): Promise<{ ok: true; html: string } | { ok: false; error: string }> {
   try {
     const res = await fetch(url, {
@@ -1780,34 +1879,9 @@ async function processSource(
   }
 
   const parsedSorted = [...parsed.bands].sort((a, b) => a.alt_limit - b.alt_limit);
+  const matching = matchStoredBands(bankName, stored, parsedSorted);
 
-  // Bantlar DİZİ SIRASINA göre değil, alt_limit'e (kuruş toleranslı) göre
-  // eşleştirilir — bir kaynak sayfa aynı SAYIDA bant döndürse bile farklı
-  // tutar sınırlarına karşılık geliyor olabilir (ör. bir bant ikiye
-  // bölünmüş/birleşmiş olabilir); yalnızca "sayı tutuyor" güvenli bir
-  // eşleştirme garantisi VERMEZ. Her stored bandın TAM OLARAK bir eşleşen
-  // alt_limit'i olmalı ve parsed tarafında fazladan/eşleşmeyen bant
-  // BULUNMAMALI — aksi halde (kısmen bile olsa) yapısal bir belirsizlik
-  // var demektir ve hiçbir bant için öneri üretilmez (hepsi ya da hiçbiri).
-  const parsedByAlt = new Map<string, ParsedBand>();
-  for (const b of parsedSorted) parsedByAlt.set((Math.round(b.alt_limit * 100) / 100).toFixed(2), b);
-
-  const unmatchedStored: BankRateRow[] = [];
-  const matchedPairs: { storedBand: BankRateRow; parsedBand: ParsedBand }[] = [];
-  const consumedAltKeys = new Set<string>();
-  for (const storedBand of stored) {
-    const key = (Math.round(Number(storedBand.alt_limit) * 100) / 100).toFixed(2);
-    const parsedBand = parsedByAlt.get(key);
-    if (!parsedBand) {
-      unmatchedStored.push(storedBand);
-    } else {
-      matchedPairs.push({ storedBand, parsedBand });
-      consumedAltKeys.add(key);
-    }
-  }
-  const extraParsed = parsedSorted.filter((b) => !consumedAltKeys.has((Math.round(b.alt_limit * 100) / 100).toFixed(2)));
-
-  if (unmatchedStored.length > 0 || extraParsed.length > 0 || stored.length !== parsedSorted.length) {
+  if (!matching.ok) {
     await supabase.from("rate_check_findings").insert({
       run_id: runId,
       bank_source_id: source.id,
@@ -1816,15 +1890,7 @@ async function processSource(
       evidence_url: source.source_url,
       current_value: stored,
       observed_value: parsedSorted,
-      detail:
-        `Bant yapısı güvenle eşleştirilemedi — otomatik öneri üretilmedi (hepsi ya da hiçbiri). ` +
-        `Kayıtlı bant sayısı: ${stored.length}, sayfada bulunan: ${parsedSorted.length}. ` +
-        (unmatchedStored.length > 0
-          ? `Sayfada karşılığı bulunamayan kayıtlı alt limitler: ${unmatchedStored.map((b) => b.alt_limit).join(", ")}. `
-          : "") +
-        (extraParsed.length > 0
-          ? `Kayıtlı bantlarla eşleşmeyen, sayfada bulunan fazladan alt limitler: ${extraParsed.map((b) => b.alt_limit).join(", ")}.`
-          : ""),
+      detail: matching.error,
     });
     await supabase
       .from("bank_sources")
@@ -1833,19 +1899,15 @@ async function processSource(
     return { status: "parse_error", findingsCreated: 1 };
   }
 
+  const matchedPairs = matching.pairs;
+
   let anyNewChange = false; // gerçekten yeni, kabul edilmemiş bir fark var mı
   let anyAcceptedDiff = false; // fark var ama daha önce admin tarafından kabul edilmiş
+  let anyConcurrencyResolved = false; // kontrol sürerken zaten uygulanmış değişiklik
   let findingsCreated = 0;
 
   for (const { storedBand, parsedBand } of matchedPairs) {
-    const storedAsParsed: ParsedBand = {
-      alt_limit: Number(storedBand.alt_limit),
-      ust_limit: Number(storedBand.ust_limit),
-      yillik_brut_oran: Number(storedBand.yillik_brut_oran),
-      vadesizde_kalacak: Number(storedBand.vadesizde_kalacak),
-      vadesiz_hesaplama_tipi: storedBand.vadesiz_hesaplama_tipi,
-      vadesiz_oran: storedBand.vadesiz_oran !== null ? Number(storedBand.vadesiz_oran) : null,
-    };
+    const storedAsParsed = bankRateAsParsed(storedBand);
 
     if (bandsEqual(storedAsParsed, parsedBand)) continue;
 
@@ -1920,65 +1982,87 @@ async function processSource(
       continue;
     }
 
-    anyNewChange = true;
+    // Talep oluşturma artık veritabanında SATIR KİLİDİ altında atomik yapılır.
+    // Böylece admin bir oranı, uzun süren bir kontrol tam aynı anda
+    // yayımladığında kontrolün eski anlık görüntüyle yeni/bayat talep açması
+    // engellenir. Aynı RPC eşzamanlı iki kontrolün mükerrer talep açmasını da
+    // önler.
+    const { data: ensureRows, error: ensureErr } = await supabase.rpc(
+      "ensure_automation_rate_change_request",
+      {
+        p_bank_rate_id: storedBand.id,
+        p_bank_id: source.bank_id,
+        p_expected_previous: storedBand,
+        p_proposed_data: proposedData,
+      },
+    );
+    const ensured = Array.isArray(ensureRows) ? ensureRows[0] : ensureRows;
 
-    const { data: existingPending } = await supabase
-      .from("rate_change_requests")
-      .select("id, proposed_data, previous_data")
-      .eq("bank_rate_id", storedBand.id)
-      .eq("status", "pending")
-      .eq("source", "automation");
-
-    const proposedCanonical = canonicalJson(proposedData);
-    const duplicate = (existingPending ?? []).find((r: { proposed_data: unknown; previous_data: unknown }) => {
-      if (canonicalJson(r.proposed_data) !== proposedCanonical) return false;
-      // Mevcut pending talebin previous_data'sı (o talep açıldığında beklenen
-      // taban değer) hâlâ canlı bant ile eşleşiyor mu? Eşleşmiyorsa o talep
-      // ARTIK BAYAT demektir (approve_rate_change de bunu ayrıca reddeder) —
-      // mükerrer sayılmaz, aşağıda taze previous_data'lı YENİ bir talep
-      // açılır. Eski bayat talep pending kalmaya devam eder; admin onu
-      // reddedip taze talebi onaylayabilir.
-      const prevParsed = parsedBandFromSnapshot(r.previous_data);
-      if (!prevParsed) return false;
-      return bandsEqual(prevParsed, storedAsParsed);
-    });
-
-    if (duplicate) {
+    if (ensureErr || !ensured) {
       await supabase.from("rate_check_findings").insert({
         run_id: runId,
         bank_source_id: source.id,
         bank_id: source.bank_id,
-        finding_type: "rate_changed",
+        finding_type: "parse_error",
         evidence_url: source.source_url,
         current_value: storedBand,
         observed_value: proposedData,
-        rate_change_request_id: duplicate.id,
         fingerprint,
         raw_evidence: parsedBand.raw ?? null,
         source_table_name: parsedBand.source_table_name ?? null,
         selected_rate_column: parsedBand.selected_rate_column ?? null,
         selected_rate_condition: parsedBand.selected_rate_condition ?? null,
         observed_rate_candidates: parsedBand.observed_rate_candidates ?? null,
-        detail: "Bu değişiklik için zaten onay bekleyen bir talep var (mükerrer oluşturulmadı).",
+        detail: `Talep güvenli biçimde oluşturulamadı: ${ensureErr?.message ?? "bilinmeyen RPC yanıtı"}`,
+      });
+      findingsCreated++;
+      await supabase
+        .from("bank_sources")
+        .update({ last_checked_at: new Date().toISOString(), last_check_status: "parse_error" })
+        .eq("id", source.id);
+      return { status: "parse_error", findingsCreated };
+    }
+
+    if (ensured.outcome === "already_applied") {
+      anyConcurrencyResolved = true;
+      await supabase.from("rate_check_findings").insert({
+        run_id: runId,
+        bank_source_id: source.id,
+        bank_id: source.bank_id,
+        finding_type: "no_change",
+        evidence_url: source.source_url,
+        current_value: ensured.live_data,
+        observed_value: proposedData,
+        fingerprint,
+        raw_evidence: parsedBand.raw ?? null,
+        detail: "Kontrol sürerken aynı değişiklik admin tarafından yayımlandı; bayat/mükerrer talep açılmadı.",
       });
       findingsCreated++;
       continue;
     }
 
-    const { data: newRequest, error: insertErr } = await supabase
-      .from("rate_change_requests")
-      .insert({
-        bank_rate_id: storedBand.id,
+    if (ensured.outcome === "stale") {
+      await supabase.from("rate_check_findings").insert({
+        run_id: runId,
+        bank_source_id: source.id,
         bank_id: source.bank_id,
-        change_type: "update",
-        proposed_data: proposedData,
-        previous_data: storedBand,
-        requested_by: null,
-        source: "automation",
-        status: "pending",
-      })
-      .select("id")
-      .single();
+        finding_type: "parse_error",
+        evidence_url: source.source_url,
+        current_value: ensured.live_data,
+        observed_value: proposedData,
+        fingerprint,
+        raw_evidence: parsedBand.raw ?? null,
+        detail: "Canlı oran kontrol sırasında değişti; eski görüntüyle talep açılmadı. Bir sonraki kontrolde güncel veriler yeniden değerlendirilecek.",
+      });
+      findingsCreated++;
+      await supabase
+        .from("bank_sources")
+        .update({ last_checked_at: new Date().toISOString(), last_check_status: "parse_error" })
+        .eq("id", source.id);
+      return { status: "parse_error", findingsCreated };
+    }
+
+    anyNewChange = true;
 
     await supabase.from("rate_check_findings").insert({
       run_id: runId,
@@ -1988,19 +2072,21 @@ async function processSource(
       evidence_url: source.source_url,
       current_value: storedBand,
       observed_value: proposedData,
-      rate_change_request_id: newRequest?.id ?? null,
+      rate_change_request_id: ensured.request_id ?? null,
       fingerprint,
       raw_evidence: parsedBand.raw ?? null,
       source_table_name: parsedBand.source_table_name ?? null,
       selected_rate_column: parsedBand.selected_rate_column ?? null,
       selected_rate_condition: parsedBand.selected_rate_condition ?? null,
       observed_rate_candidates: parsedBand.observed_rate_candidates ?? null,
-      detail: insertErr ? `Talep oluşturulamadı: ${insertErr.message}` : undefined,
+      detail: ensured.outcome === "duplicate"
+        ? "Bu değişiklik için zaten güncel bir talep var (mükerrer oluşturulmadı)."
+        : undefined,
     });
     findingsCreated++;
   }
 
-  if (!anyNewChange && !anyAcceptedDiff) {
+  if (!anyNewChange && !anyAcceptedDiff && !anyConcurrencyResolved) {
     await supabase.from("rate_check_findings").insert({
       run_id: runId,
       bank_source_id: source.id,
