@@ -187,12 +187,34 @@ export function fail(error: string): ParseResult {
 // yapısına güvenir; yapı beklenmedikse tahmin üretmez, hata döner.
 // ---------------------------------------------------------------------------
 
+const TOM_SOURCE_TABLE_NAME = "Günlük Kazandıran Hesap Limitler ve Kâra Katılma Oranları";
+const TOM_EXPECTED_TIER_COUNT = 9;
+
+function normalizeTomHeader(raw: string): string {
+  return raw
+    .replace(/[​-‍﻿]/g, "")
+    .replace(/\*+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function parseTomBank(html: string): ParseResult {
   const doc = new DOMParser().parseFromString(html, "text/html");
   if (!doc) return fail("HTML ayrıştırılamadı");
 
-  const table = doc.querySelector("table.limit-table");
-  if (!table) return fail('table.limit-table bulunamadı — sayfa yapısı değişmiş olabilir');
+  const requiredHeaders = ["Getiri Oranı (%)", "Alt Limit", "Üst Limit", "Vadesiz Alt Limit"];
+  const candidates = Array.from(doc.querySelectorAll("table.limit-table")).filter((candidate) => {
+    const headers = Array.from(candidate.querySelectorAll("thead th")).map((th) => normalizeTomHeader(textOf(th)));
+    return requiredHeaders.every((required) => headers.includes(required));
+  });
+  if (candidates.length !== 1) {
+    return fail(
+      candidates.length === 0
+        ? "Beklenen TOM Bank tablo başlıklarını taşıyan table.limit-table bulunamadı"
+        : `Beklenen başlıkları taşıyan birden fazla TOM Bank tablosu bulundu (${candidates.length})`,
+    );
+  }
+  const table = candidates[0];
 
   const rows = Array.from(table.querySelectorAll("tbody tr"));
   if (rows.length === 0) return fail("tbody satırı bulunamadı");
@@ -223,6 +245,8 @@ export function parseTomBank(html: string): ParseResult {
       vadesizde_kalacak: vadesiz,
       vadesiz_hesaplama_tipi: "sabit",
       vadesiz_oran: null,
+      source_table_name: TOM_SOURCE_TABLE_NAME,
+      selected_rate_column: "Getiri Oranı (%)",
       raw: {
         "Oran (kaynak sütunu)": rateRaw,
         "Alt Limit (kaynak sütunu)": altRaw,
@@ -1588,15 +1612,12 @@ function bankRateAsParsed(band: BankRateRow): ParsedBand {
   };
 }
 
-// Normal akışta bantlar alt_limit ile birebir eşleştirilir. TOM Bank'ın
-// resmî tablosu 2026-10-19'da 17,5M sınırını 20M'ye taşıdı; bant sayısı ve
-// sırası aynı kaldığı için yalnızca bu ürün için, sıkı korumalar altında,
-// satır sırası yapısal kimlik olarak kullanılabilir. Koşullar:
-//   - iki tarafta da aynı sayıda bant,
-//   - yalnızca tek alt sınır değişmiş,
-//   - ilk alt ve son üst sınır aynı,
-//   - parsed küme kendi içinde validateBands ile zaten doğrulanmış.
-// Bunlardan biri bozulursa tahmin yürütülmez ve parse_error üretilir.
+// Normal akışta bantlar alt_limit ile birebir eşleştirilir. TOM Bank resmî
+// tablosu 2026-10-19'da tek sınırı, 2026-10-21'de ise 9 kademenin tamamını
+// yeniden düzenledi. Yalnızca bu ürün ve doğrulanmış TOM tablo başlıkları
+// için, aşağıdaki sıkı korumalar altında satır sırası kademe kimliği olarak
+// kullanılabilir. Koşullardan biri bozulursa tahmin yürütülmez ve parse_error
+// üretilir; değişiklikler hiçbir zaman kendiliğinden onaylanmaz.
 export function matchStoredBands(bankName: string, stored: BankRateRow[], parsed: ParsedBand[]): BandMatchResult {
   const storedSorted = [...stored].sort((a, b) => Number(a.alt_limit) - Number(b.alt_limit));
   const parsedSorted = [...parsed].sort((a, b) => a.alt_limit - b.alt_limit);
@@ -1621,6 +1642,16 @@ export function matchStoredBands(bankName: string, stored: BankRateRow[], parsed
     if (!parsedBand || Math.abs(Number(storedBand.alt_limit) - parsedBand.alt_limit) > EPS_MONEY) indices.push(index);
     return indices;
   }, []);
+  const isContinuous = (bands: Array<{ alt_limit: number | string; ust_limit: number | string }>): boolean =>
+    bands.every((band, index) => {
+      const alt = Number(band.alt_limit);
+      const ust = Number(band.ust_limit);
+      if (!Number.isFinite(alt) || !Number.isFinite(ust) || alt > ust) return false;
+      if (index === bands.length - 1) return true;
+      const nextAlt = Number(bands[index + 1].alt_limit);
+      return Number.isFinite(nextAlt) && Math.abs(nextAlt - ust - 0.01) <= EPS_MONEY;
+    });
+  const parsedFromVerifiedTomTable = parsedSorted.every((band) => band.source_table_name === TOM_SOURCE_TABLE_NAME);
 
   if (unmatchedStored.length === 0 && extraParsed.length === 0 && storedSorted.length === parsedSorted.length) {
     return { ok: true, pairs, structuralChange: false };
@@ -1636,7 +1667,31 @@ export function matchStoredBands(bankName: string, stored: BankRateRow[], parsed
     Math.abs(Number(storedSorted[0].alt_limit) - parsedSorted[0].alt_limit) <= EPS_MONEY &&
     Math.abs(Number(storedSorted.at(-1)?.ust_limit) - Number(parsedSorted.at(-1)?.ust_limit)) <= EPS_MONEY;
 
-  if (tomSafeOrdinalChange) {
+  // TOM Bank 2026-10-21'de 9 satırlı resmî tablonun bant sınırlarını ve
+  // vadesizde kalacak tutarlarını topluca yeniledi. Alt-limit anahtarlarının
+  // çoğu değiştiği için tek-sınır istisnası yeterli değil. Yalnızca şu sıkı
+  // koşullarda satır sırası ürün kademesi kimliği olarak kullanılabilir:
+  //   - banka TOM Bank ve iki tarafta da TAM 9 bant,
+  //   - kaynak, doğrulanmış başlıklara sahip resmî TOM tablosu,
+  //   - kayıtlı ve bulunan kümeler kendi içinde 0,01 TL kesintisiz,
+  //   - eşleşmeyen anahtar sayıları ve sıra-konumu farkları birebir aynı.
+  // Onay yine otomatik verilmez; dokuz öneri admin toplu onayına gider ve
+  // approve_rate_changes_bulk nihai bant kümesini atomik doğrular.
+  const tomVerifiedFullTableReplacement =
+    bankName === "TOM Bank" &&
+    storedSorted.length === TOM_EXPECTED_TIER_COUNT &&
+    parsedSorted.length === TOM_EXPECTED_TIER_COUNT &&
+    unmatchedStored.length > 1 &&
+    unmatchedStored.length === extraParsed.length &&
+    ordinalAltMismatches.length > 1 &&
+    parsedFromVerifiedTomTable &&
+    isContinuous(storedSorted) &&
+    isContinuous(parsedSorted);
+
+  if (tomSafeOrdinalChange || tomVerifiedFullTableReplacement) {
+    const matchDescription = tomVerifiedFullTableReplacement
+      ? "TOM Bank resmî 9 bant tablosundaki bütünsel yapı değişikliği, doğrulanmış satır sırasına göre eşleştirildi"
+      : "TOM Bank resmî tablosundaki tek sınır değişikliği, doğrulanmış satır sırasına göre eşleştirildi";
     return {
       ok: true,
       structuralChange: true,
@@ -1646,7 +1701,7 @@ export function matchStoredBands(bankName: string, stored: BankRateRow[], parsed
           ...parsedSorted[index],
           raw: {
             ...(parsedSorted[index].raw ?? {}),
-            "Yapısal eşleştirme": "TOM Bank resmî tablosundaki tek sınır değişikliği, doğrulanmış satır sırasına göre eşleştirildi",
+            "Yapısal eşleştirme": matchDescription,
           },
         },
       })),

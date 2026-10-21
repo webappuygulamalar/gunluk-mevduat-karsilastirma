@@ -84,6 +84,20 @@ const TOM_STORED: BankRateRow[] = [
   stubRate({ alt_limit: 35000000, ust_limit: 75000000, vadesizde_kalacak: 5000000, yillik_brut_oran: 0.41 }),
 ];
 
+// 2026-10-19'da onaylanıp canlıya alınan yapı; 2026-10-21 tam tablo
+// değişikliğinin güvenli eşleştirme tabanı.
+const TOM_AFTER_20261019_STORED: BankRateRow[] = [
+  stubRate({ alt_limit: 7500, ust_limit: 49999.99, vadesizde_kalacak: 7500, yillik_brut_oran: 0.43 }),
+  stubRate({ alt_limit: 50000, ust_limit: 249999.99, vadesizde_kalacak: 35000, yillik_brut_oran: 0.43 }),
+  stubRate({ alt_limit: 250000, ust_limit: 499999.99, vadesizde_kalacak: 50000, yillik_brut_oran: 0.43 }),
+  stubRate({ alt_limit: 500000, ust_limit: 1249999.99, vadesizde_kalacak: 200000, yillik_brut_oran: 0.475 }),
+  stubRate({ alt_limit: 1250000, ust_limit: 2499999.99, vadesizde_kalacak: 450000, yillik_brut_oran: 0.48 }),
+  stubRate({ alt_limit: 2500000, ust_limit: 7499999.99, vadesizde_kalacak: 775000, yillik_brut_oran: 0.44 }),
+  stubRate({ alt_limit: 7500000, ust_limit: 19999999.99, vadesizde_kalacak: 1750000, yillik_brut_oran: 0.44 }),
+  stubRate({ alt_limit: 20000000, ust_limit: 34999999.99, vadesizde_kalacak: 3000000, yillik_brut_oran: 0.39 }),
+  stubRate({ alt_limit: 35000000, ust_limit: 75000000, vadesizde_kalacak: 5000000, yillik_brut_oran: 0.39 }),
+];
+
 function withFetchStub<T>(impl: (input: string | URL | Request, init?: RequestInit) => Promise<Response>, fn: () => Promise<T>): Promise<T> {
   const original = globalThis.fetch;
   // deno-lint-ignore no-explicit-any
@@ -117,7 +131,7 @@ Deno.test("parseTRMoney: TR binlik/ondalık ayırıcı", () => {
 // ---------------------------------------------------------------------------
 // TOM Bank — resmî tabloda tek sınırın 17,5M -> 20M taşınması
 // ---------------------------------------------------------------------------
-Deno.test("TOM Bank: güncel 9 bant kuruş boşluğu bırakmadan ayrıştırılır", async () => {
+Deno.test("TOM Bank: 2026-10-19 yapısındaki 9 bant kuruş boşluğu bırakmadan ayrıştırılır", async () => {
   const html = await readFixture("tombank_current_structure.html");
   const result = parseTomBank(html);
   assert(result.ok, `TOM parse hatası: ${result.error ?? ""}`);
@@ -131,6 +145,53 @@ Deno.test("TOM Bank: güncel 9 bant kuruş boşluğu bırakmadan ayrıştırıl�
   assertEquals(result.bands[7].alt_limit, 20000000);
   assertEquals(result.bands[7].yillik_brut_oran, 0.39);
   assertEquals(result.bands[8].yillik_brut_oran, 0.39);
+});
+
+Deno.test("TOM Bank: 2026-10-21 resmî tam tablo değişikliği 9 bant olarak güvenle ayrıştırılır", async () => {
+  const html = await readFixture("tombank_full_structure_20261021.html");
+  const result = parseTomBank(html);
+  assert(result.ok, `TOM parse hatası: ${result.error ?? ""}`);
+  assertEquals(result.bands.length, 9);
+  assertEquals(result.bands.map((band) => band.yillik_brut_oran), Array(9).fill(0.44));
+  assertEquals(result.bands.map((band) => band.alt_limit), [
+    10000, 50000, 100000, 250000, 500000, 1250000, 2500000, 5000000, 10000000,
+  ]);
+  assertEquals(result.bands.map((band) => band.vadesizde_kalacak), [
+    7500, 15000, 30000, 60000, 150000, 300000, 500000, 1000000, 2000000,
+  ]);
+  for (let i = 0; i < result.bands.length - 1; i++) {
+    assertEquals(Math.round((result.bands[i + 1].alt_limit - result.bands[i].ust_limit) * 100) / 100, 0.01);
+  }
+  assertEquals(result.bands[8].ust_limit, 20000000);
+});
+
+Deno.test("TOM Bank: doğrulanmış 9 satırlı tam yapı değişikliği admin onay önerilerine eşleştirilir", async () => {
+  const html = await readFixture("tombank_full_structure_20261021.html");
+  const result = parseTomBank(html);
+  assert(result.ok);
+
+  const matched = matchStoredBands("TOM Bank", TOM_AFTER_20261019_STORED, result.bands);
+  assert(matched.ok, matched.error);
+  assertEquals(matched.structuralChange, true);
+  assertEquals(matched.pairs.length, 9);
+  assertEquals(matched.pairs[0].storedBand.alt_limit, 7500);
+  assertEquals(matched.pairs[0].parsedBand.alt_limit, 10000);
+  assertEquals(matched.pairs[7].storedBand.alt_limit, 20000000);
+  assertEquals(matched.pairs[7].parsedBand.alt_limit, 5000000);
+  assertStringIncludes(matched.pairs[0].parsedBand.raw?.["Yapısal eşleştirme"] ?? "", "bütünsel yapı değişikliği");
+
+  const otherBank = matchStoredBands("Başka Banka", TOM_AFTER_20261019_STORED, result.bands);
+  assertEquals(otherBank.ok, false, "tam tablo sıra eşleştirmesi yalnızca doğrulanmış TOM Bank akışına ait olmalı");
+});
+
+Deno.test("TOM Bank: başlıksız veya belirsiz tablo tam yapı değişikliği önerisi üretmez", async () => {
+  const html = await readFixture("tombank_full_structure_20261021.html");
+  const withoutHeader = html.replace(/<thead>[\s\S]*?<\/thead>/, "");
+  const missingHeader = parseTomBank(withoutHeader);
+  assertEquals(missingHeader.ok, false);
+
+  const duplicated = parseTomBank(html.replace("</body>", `${html.match(/<table[\s\S]*?<\/table>/)?.[0] ?? ""}</body>`));
+  assertEquals(duplicated.ok, false);
 });
 
 Deno.test("TOM Bank: tek yapısal sınır değişikliği güvenli satır sırasıyla eşleştirilir", async () => {
